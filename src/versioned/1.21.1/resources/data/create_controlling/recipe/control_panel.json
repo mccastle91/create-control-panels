@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "pattern": [
+    "SSS",
+    "TCL"
+  ],
+  "key": {
+    "S": { "item": "create:iron_sheet" },
+    "T": { "item": "create:transmitter" },
+    "L": { "item": "create:redstone_link" },
+    "C": { "item": "create:andesite_casing" }
+  },
+  "result": {
+    "id": "create_controlling:control_panel",
+    "count": 1
+  }
+}

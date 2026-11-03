@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "create_controlling:block/control_panel" }
+  }
+}

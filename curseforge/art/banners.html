@@ -1,0 +1,424 @@
+<!doctype html>
+<!--
+  Source for the CurseForge page art. Every image is drawn here as SVG and
+  picked by the URL hash, e.g. banners.html#header. render.sh screenshots each
+  one with headless Edge into ../images/. Illustrations only: no Minecraft or
+  Create textures are used.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  /* Bungee and Barlow Condensed (SIL OFL), bundled so headless renders don't depend on the network */
+  @font-face { font-family: 'Bungee'; src: url(fonts/bungee.woff2) format('woff2'); }
+  @font-face { font-family: 'Barlow Condensed'; font-weight: 500; src: url(fonts/barlow-500.woff2) format('woff2'); }
+  @font-face { font-family: 'Barlow Condensed'; font-weight: 600; src: url(fonts/barlow-600.woff2) format('woff2'); }
+  @font-face { font-family: 'Barlow Condensed'; font-weight: 700; src: url(fonts/barlow-700.woff2) format('woff2'); }
+  html, body { margin: 0; padding: 0; background: #17130f; overflow: hidden; }
+  svg { display: block; }
+  .t-display { font-family: 'Bungee', sans-serif; }
+  .t-body { font-family: 'Barlow Condensed', sans-serif; }
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script>
+// ---------- palette ----------
+const C = {
+  bg0: '#17130f', bg1: '#251c15', bg2: '#33271d',
+  brass: '#d9a441', brassL: '#f3d27a', brassD: '#8a611f', brassDD: '#5c3f12',
+  wood: '#5b3b24', woodD: '#3f2817', woodL: '#704a2e',
+  plate: '#363c3c', plateD: '#272c2c', plateL: '#4a5151',
+  iron: '#a7adb0', ironD: '#6d7376',
+  red: '#d8392b', cream: '#efe3c4', text: '#f3e6cc', muted: '#b9a487',
+  nixie: '#ff8a2a', green: '#63e27a', amber: '#ffb43a', blue: '#5ab8ff',
+};
+
+// ---------- shared defs ----------
+const DEFS = `
+<defs>
+  <radialGradient id="gRed" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#ff8a6c"/><stop offset=".45" stop-color="#d8392b"/><stop offset="1" stop-color="#7a1a12"/></radialGradient>
+  <radialGradient id="gYellow" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#fff0a0"/><stop offset=".45" stop-color="#e7b52c"/><stop offset="1" stop-color="#7d5a0c"/></radialGradient>
+  <radialGradient id="gBlack" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#6d6d6d"/><stop offset=".5" stop-color="#2a2a2a"/><stop offset="1" stop-color="#0d0d0d"/></radialGradient>
+  <radialGradient id="gBrass" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#fbe39a"/><stop offset=".5" stop-color="#d9a441"/><stop offset="1" stop-color="#7d5617"/></radialGradient>
+  <radialGradient id="gIron" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#e5e9eb"/><stop offset=".5" stop-color="#a7adb0"/><stop offset="1" stop-color="#4f5457"/></radialGradient>
+  <radialGradient id="gLampG" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#e9ffe9"/><stop offset=".35" stop-color="#63e27a"/><stop offset="1" stop-color="#1c7a32"/></radialGradient>
+  <radialGradient id="gLampA" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#fff6dc"/><stop offset=".35" stop-color="#ffb43a"/><stop offset="1" stop-color="#a05a08"/></radialGradient>
+  <radialGradient id="gLampR" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#ffe3dc"/><stop offset=".35" stop-color="#ff5a3c"/><stop offset="1" stop-color="#8a1a0c"/></radialGradient>
+  <radialGradient id="gLampOff" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="#7a5048"/><stop offset="1" stop-color="#2c1a17"/></radialGradient>
+  <linearGradient id="gGlass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".25" stop-color="#fff" stop-opacity=".06"/><stop offset=".75" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#fff" stop-opacity=".2"/></linearGradient>
+  <linearGradient id="gBrassBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3d27a"/><stop offset=".5" stop-color="#d9a441"/><stop offset="1" stop-color="#8a611f"/></linearGradient>
+  <linearGradient id="gCover" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff6b55" stop-opacity=".85"/><stop offset="1" stop-color="#a51e12" stop-opacity=".8"/></linearGradient>
+  <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="glowBig" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="9"/></filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2"/></filter>
+  <pattern id="pGrid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#f3d27a" stroke-opacity=".05" stroke-width="1"/></pattern>
+  <pattern id="pGridFine" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="#f3d27a" stroke-opacity=".025" stroke-width="1"/></pattern>
+  <pattern id="pPlate" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="${C.plate}"/><rect x="0" y="0" width="10" height="10" fill="#3a4141"/><rect x="10" y="10" width="10" height="10" fill="#323838"/></pattern>
+  <pattern id="pHazard" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="24" height="24" fill="#1d1a16"/><rect width="12" height="24" fill="#e7b52c"/></pattern>
+</defs>`;
+
+// ---------- helpers ----------
+function gearPath(cx, cy, rO, rI, teeth, hole) {
+  let d = '';
+  const step = Math.PI * 2 / teeth;
+  for (let i = 0; i < teeth; i++) {
+    const a = i * step;
+    const pts = [[rI, a], [rO, a + step * .18], [rO, a + step * .48], [rI, a + step * .66]];
+    pts.forEach(([r, t], j) => {
+      const x = cx + r * Math.cos(t), y = cy + r * Math.sin(t);
+      d += (i === 0 && j === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+    });
+  }
+  d += 'Z';
+  if (hole) d += `M${cx + hole} ${cy}A${hole} ${hole} 0 1 0 ${cx - hole} ${cy}A${hole} ${hole} 0 1 0 ${cx + hole} ${cy}Z`;
+  return d;
+}
+const gear = (cx, cy, r, teeth, fill, op, extra = '') =>
+  `<path d="${gearPath(cx, cy, r, r * .84, teeth, r * .38)}" fill="${fill}" fill-opacity="${op}" fill-rule="evenodd" ${extra}/>`;
+const rivet = (x, y, r = 3) => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#gBrass)" stroke="${C.brassDD}" stroke-width=".8"/>`;
+
+// ---------- components, drawn top-down in face units (10 units = 1 px of a block) ----------
+// Each function draws inside the component's footprint with its top-left at (x, y).
+function plate(x, y, w, h) {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${C.plateD}" stroke="#151818" stroke-width="1.2"/>
+          <rect x="${x + 1.5}" y="${y + 1.5}" width="${w - 3}" height="${h - 3}" rx="2" fill="none" stroke="#fff" stroke-opacity=".06"/>`;
+}
+function capButton(cx, cy, r, grad) {
+  return `<circle cx="${cx + r * .18}" cy="${cy + r * .28}" r="${r * 1.12}" fill="#000" opacity=".4" filter="url(#soft)"/>
+    <circle cx="${cx}" cy="${cy}" r="${r * 1.2}" fill="url(#gBrass)" stroke="${C.brassDD}" stroke-width=".8"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${grad})" stroke="#000" stroke-opacity=".35" stroke-width=".8"/>
+    <ellipse cx="${cx - r * .32}" cy="${cy - r * .38}" rx="${r * .36}" ry="${r * .2}" fill="#fff" opacity=".45" transform="rotate(-30 ${cx - r * .32} ${cy - r * .38})"/>`;
+}
+const COMP = {
+  button: { w: 30, h: 30, draw: (x, y) => plate(x, y, 30, 30) + capButton(x + 15, y + 15, 9, 'gRed') },
+  latching_button: { w: 30, h: 30, draw: (x, y) => plate(x, y, 30, 30) + capButton(x + 15, y + 15, 9, 'gYellow')
+      + `<circle cx="${x + 15}" cy="${y + 15}" r="4" fill="none" stroke="#5c3f12" stroke-width="1.4" opacity=".7"/>` },
+  large_button: { w: 50, h: 50, draw: (x, y) => `<rect x="${x}" y="${y}" width="50" height="50" rx="4" fill="url(#pHazard)" stroke="#151818" stroke-width="1.4"/>
+      <rect x="${x + 4}" y="${y + 4}" width="42" height="42" rx="3" fill="${C.plateD}"/>` + capButton(x + 25, y + 25, 15, 'gRed') },
+  toggle_switch: { w: 20, h: 30, on: true, draw: (x, y, s = {}) => {
+      const up = s.on !== false; const cx = x + 10, cy = y + 15, ty = up ? y + 3 : y + 27;
+      return plate(x, y, 20, 30) + `<rect x="${cx - 4}" y="${y + 7}" width="8" height="16" rx="3" fill="#121414"/>
+        <circle cx="${cx}" cy="${cy}" r="5" fill="url(#gIron)"/>
+        <line x1="${cx + 2}" y1="${cy + 2}" x2="${cx + 2}" y2="${ty + 2}" stroke="#000" stroke-opacity=".4" stroke-width="4" stroke-linecap="round" filter="url(#soft)"/>
+        <line x1="${cx}" y1="${cy}" x2="${cx}" y2="${ty}" stroke="url(#gIron)" stroke-width="3.6" stroke-linecap="round"/>
+        <circle cx="${cx}" cy="${ty}" r="3.4" fill="url(#gIron)" stroke="#3a3f42" stroke-width=".6"/>`; } },
+  covered_switch: { w: 30, h: 40, draw: (x, y) => plate(x, y, 30, 40) + COMP.toggle_switch.draw(x + 5, y + 7, { on: true })
+      + `<rect x="${x + 2}" y="${y + 2}" width="26" height="6" rx="2" fill="url(#gBrassBar)"/>
+         <path d="M${x + 3} ${y + 6} L${x + 27} ${y + 6} L${x + 29} ${y - 14} L${x + 1} ${y - 14} Z" fill="url(#gCover)" stroke="#6e130b" stroke-width="1"/>
+         <path d="M${x + 5} ${y + 3} L${x + 9} ${y - 11}" stroke="#fff" stroke-opacity=".5" stroke-width="1.6"/>` },
+  knob: { w: 40, h: 40, draw: (x, y, s = {}) => {
+      const cx = x + 20, cy = y + 20, v = s.value ?? 10; let ticks = '';
+      for (let i = 0; i <= 15; i++) { const a = (-225 + i * 18) * Math.PI / 180;
+        ticks += `<line x1="${cx + 16.5 * Math.cos(a)}" y1="${cy + 16.5 * Math.sin(a)}" x2="${cx + (i % 5 ? 18.5 : 19.5) * Math.cos(a)}" y2="${cy + (i % 5 ? 18.5 : 19.5) * Math.sin(a)}" stroke="${C.cream}" stroke-width="${i % 5 ? .9 : 1.6}"/>`; }
+      const a = (-225 + v * 18) * Math.PI / 180;
+      return plate(x, y, 40, 40) + ticks + `<circle cx="${cx + 2}" cy="${cy + 3}" r="13" fill="#000" opacity=".45" filter="url(#soft)"/>
+        <circle cx="${cx}" cy="${cy}" r="13" fill="url(#gBlack)" stroke="#000" stroke-width=".8"/>
+        <circle cx="${cx}" cy="${cy}" r="9" fill="url(#gBrass)"/>
+        <line x1="${cx + 3 * Math.cos(a)}" y1="${cy + 3 * Math.sin(a)}" x2="${cx + 12 * Math.cos(a)}" y2="${cy + 12 * Math.sin(a)}" stroke="${C.red}" stroke-width="2.6" stroke-linecap="round"/>`; } },
+  slider_h: { w: 80, h: 20, draw: (x, y, s = {}) => {
+      const v = s.value ?? 9, hx = x + 10 + v / 15 * 60; let ticks = '';
+      for (let i = 0; i <= 15; i++) ticks += `<line x1="${x + 10 + i * 4}" y1="${y + 3}" x2="${x + 10 + i * 4}" y2="${y + (i % 5 ? 5 : 6.5)}" stroke="${C.cream}" stroke-opacity=".7" stroke-width=".7"/>`;
+      return plate(x, y, 80, 20) + ticks + `<rect x="${x + 8}" y="${y + 8.5}" width="64" height="3" rx="1.5" fill="#0e1010"/>
+        <rect x="${x + 8}" y="${y + 8.5}" width="${hx - x - 8}" height="3" rx="1.5" fill="${C.amber}" opacity=".85"/>
+        <rect x="${hx - 3}" y="${y + 3}" width="8" height="16" rx="1.5" fill="#000" opacity=".4" filter="url(#soft)"/>
+        <rect x="${hx - 4}" y="${y + 2}" width="8" height="16" rx="1.5" fill="url(#gBrassBar)" stroke="${C.brassDD}" stroke-width=".8"/>
+        <line x1="${hx}" y1="${y + 4}" x2="${hx}" y2="${y + 16}" stroke="${C.brassDD}" stroke-width="1"/>`; } },
+  slider_v: { w: 20, h: 80, draw: (x, y, s = {}) => `<g transform="rotate(-90 ${x + 10} ${y + 10}) translate(${-60} 0)">${COMP.slider_h.draw(x, y, s)}</g>` },
+  lamp: { w: 20, h: 20, draw: (x, y, s = {}) => { const g = s.color || 'gLampG', lit = s.on !== false, col = { gLampG: C.green, gLampA: C.amber, gLampR: '#ff5a3c' }[g];
+      return plate(x, y, 20, 20) + (lit ? `<circle cx="${x + 10}" cy="${y + 10}" r="10" fill="${col}" opacity=".55" filter="url(#glowBig)"/>` : '')
+        + `<circle cx="${x + 10}" cy="${y + 10}" r="7.5" fill="url(#gBrass)"/>
+           <circle cx="${x + 10}" cy="${y + 10}" r="5.8" fill="url(#${lit ? g : 'gLampOff'})"/>
+           <circle cx="${x + 8}" cy="${y + 8}" r="1.6" fill="#fff" opacity=".7"/>`; } },
+  large_lamp: { w: 40, h: 40, draw: (x, y, s = {}) => { const g = s.color || 'gLampA', lit = s.on !== false, col = { gLampG: C.green, gLampA: C.amber, gLampR: '#ff5a3c' }[g];
+      return plate(x, y, 40, 40) + (lit ? `<circle cx="${x + 20}" cy="${y + 20}" r="20" fill="${col}" opacity=".55" filter="url(#glowBig)"/>` : '')
+        + `<circle cx="${x + 20}" cy="${y + 20}" r="16" fill="url(#gBrass)" stroke="${C.brassDD}"/>
+           <circle cx="${x + 20}" cy="${y + 20}" r="13" fill="url(#${lit ? g : 'gLampOff'})"/>
+           <path d="M${x + 9} ${y + 20}h22M${x + 20} ${y + 9}v22" stroke="#000" stroke-opacity=".18" stroke-width="1.2"/>
+           <ellipse cx="${x + 15}" cy="${y + 14}" rx="4" ry="2.4" fill="#fff" opacity=".6" transform="rotate(-35 ${x + 15} ${y + 14})"/>`; } },
+  needle_meter: { w: 60, h: 50, draw: (x, y, s = {}) => {
+      const cx = x + 30, cy = y + 40, v = s.value ?? 11; let ticks = '';
+      for (let i = 0; i <= 15; i++) { const a = (-160 + i * (140 / 15)) * Math.PI / 180, r1 = i % 5 ? 25 : 23;
+        ticks += `<line x1="${cx + r1 * Math.cos(a)}" y1="${cy + r1 * Math.sin(a)}" x2="${cx + 28 * Math.cos(a)}" y2="${cy + 28 * Math.sin(a)}" stroke="#3a2a18" stroke-width="${i % 5 ? .8 : 1.5}"/>`; }
+      const a = (-160 + v * (140 / 15)) * Math.PI / 180;
+      return `<rect x="${x}" y="${y}" width="60" height="50" rx="4" fill="url(#gBrassBar)" stroke="${C.brassDD}" stroke-width="1.2"/>
+        <rect x="${x + 4}" y="${y + 4}" width="52" height="42" rx="2.5" fill="${C.cream}"/>
+        <path d="M${cx + 29 * Math.cos(-120 * Math.PI / 180)} ${cy + 29 * Math.sin(-120 * Math.PI / 180)} A29 29 0 0 1 ${cx + 29 * Math.cos(-20 * Math.PI / 180)} ${cy + 29 * Math.sin(-20 * Math.PI / 180)}" fill="none" stroke="${C.red}" stroke-width="3" opacity=".75"/>
+        ${ticks}
+        <line x1="${cx + 1.2}" y1="${cy + 1.5}" x2="${cx + 27 * Math.cos(a) + 1.2}" y2="${cy + 27 * Math.sin(a) + 1.5}" stroke="#000" stroke-opacity=".25" stroke-width="2"/>
+        <line x1="${cx}" y1="${cy}" x2="${cx + 27 * Math.cos(a)}" y2="${cy + 27 * Math.sin(a)}" stroke="${C.red}" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="${cx}" cy="${cy}" r="3.4" fill="url(#gBlack)"/>
+        <rect x="${x + 4}" y="${y + 4}" width="52" height="42" rx="2.5" fill="url(#gGlass)"/>
+        ${rivet(x + 3, y + 3, 1.5)}${rivet(x + 57, y + 3, 1.5)}${rivet(x + 3, y + 47, 1.5)}${rivet(x + 57, y + 47, 1.5)}`; } },
+  bar_meter: { w: 60, h: 20, draw: (x, y, s = {}) => { const v = s.value ?? 10; let seg = '';
+      for (let i = 0; i < 15; i++) { const on = i < v, c = i < 9 ? C.green : i < 13 ? C.amber : '#ff5a3c';
+        seg += `<rect x="${x + 5.5 + i * 3.3}" y="${y + 5}" width="2.5" height="10" rx=".6" fill="${on ? c : '#1b2020'}" ${on ? 'filter="url(#glow)"' : ''}/>`; }
+      return `<rect x="${x}" y="${y}" width="60" height="20" rx="3" fill="url(#gBrassBar)" stroke="${C.brassDD}" stroke-width="1"/>
+        <rect x="${x + 3}" y="${y + 3}" width="54" height="14" rx="1.5" fill="#0c0e0e"/>` + seg; } },
+  nixie: { w: 60, h: 40, draw: (x, y, s = {}) => { const v = s.value ?? 12, d = String(v).padStart(2, '0');
+      const tube = (tx, ch) => `<rect x="${tx}" y="${y + 5}" width="22" height="30" rx="10" fill="#1a0f08" stroke="#c9bfa8" stroke-opacity=".55" stroke-width="1"/>
+        <path d="M${tx + 4} ${y + 12}h14M${tx + 4} ${y + 18}h14M${tx + 4} ${y + 24}h14" stroke="#ff8a2a" stroke-opacity=".12" stroke-width=".6"/>
+        <text x="${tx + 11}" y="${y + 28}" text-anchor="middle" font-family="Barlow Condensed" font-weight="600" font-size="21" fill="#ffd2a0" stroke="${C.nixie}" stroke-width=".8" filter="url(#glow)">${ch}</text>
+        <rect x="${tx}" y="${y + 5}" width="22" height="30" rx="10" fill="url(#gGlass)"/>`;
+      return `<rect x="${x + 3}" y="${y + 3}" width="54" height="34" fill="${C.nixie}" opacity=".35" filter="url(#glowBig)"/>
+        <rect x="${x}" y="${y}" width="60" height="40" rx="3" fill="${C.plateD}" stroke="#151818" stroke-width="1.2"/>
+        <rect x="${x}" y="${y + 33}" width="60" height="7" rx="2" fill="url(#gBrassBar)"/>` + tube(x + 5, d[0]) + tube(x + 33, d[1]); } },
+  label: { w: 60, h: 12, draw: (x, y, s = {}) => `<text x="${x + (s.w || 60) / 2}" y="${y + 9.5}" text-anchor="middle" font-family="Bungee" font-size="${s.size || 8}" fill="${s.color || C.cream}" letter-spacing=".6">${s.text || 'LABEL'}</text>` },
+};
+
+// ---------- the console, in a simple oblique projection ----------
+// 3D units: 1 = one block pixel. x right, y up, z towards the viewer.
+function makeProj(ox, oy, s) {
+  return (x, y, z) => [ox + (x * .94 - z * .45) * s, oy + (-y + x * .2 + z * .42) * s];
+}
+function affine(p0, pu, pv, U, V) {
+  return `matrix(${(pu[0] - p0[0]) / U} ${(pu[1] - p0[1]) / U} ${(pv[0] - p0[0]) / V} ${(pv[1] - p0[1]) / V} ${p0[0]} ${p0[1]})`;
+}
+function casingFill(w, h, blocks) {
+  // brass casing in wall-local units (10/px): brass frame round each block, dark planks inside
+  let g = `<rect x="0" y="0" width="${w}" height="${h}" fill="${C.wood}"/>`;
+  for (let py = 0; py < h; py += 40) g += `<rect x="0" y="${py}" width="${w}" height="20" fill="${C.woodL}" opacity=".35"/><line x1="0" y1="${py}" x2="${w}" y2="${py}" stroke="${C.woodD}" stroke-width="3"/>`;
+  for (let b = 0; b < blocks; b++) {
+    const bx = b * 160;
+    g += `<rect x="${bx + 10}" y="10" width="140" height="${Math.max(0, h - 20)}" fill="none" stroke="${C.brass}" stroke-width="20"/>
+          <rect x="${bx + 1}" y="1" width="158" height="${h - 2}" fill="none" stroke="${C.brassL}" stroke-width="2" opacity=".6"/>
+          <rect x="${bx + 19}" y="19" width="122" height="${Math.max(0, h - 38)}" fill="none" stroke="${C.brassDD}" stroke-width="2"/>`;
+  }
+  return g;
+}
+function drawConsole({ ox, oy, s, blocks = 2, angle = 30, front = 4, layout = [] }) {
+  const P = makeProj(ox, oy, s), W = blocks * 16, hf = front, hb = front + 16 * Math.tan(angle * Math.PI / 180);
+  const L = 160 / Math.cos(angle * Math.PI / 180);
+  const pts = a => a.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
+  let g = '';
+  // contact shadow
+  const sh = [P(-1, 0, -1), P(W + 2, 0, -1), P(W + 3, 0, 18), P(-2, 0, 18)];
+  g += `<polygon points="${pts(sh)}" fill="#000" opacity=".5" filter="url(#glowBig)"/>`;
+  // front wall: u along x, w down
+  const fw = affine(P(0, hf, 16), P(W, hf, 16), P(0, 0, 16), W * 10, hf * 10);
+  g += `<g transform="${fw}">${casingFill(W * 10, hf * 10, blocks)}<rect width="${W * 10}" height="${hf * 10}" fill="#000" opacity=".22"/></g>`;
+  // right wall: t back along z, h up
+  const rw = affine(P(W, 0, 16), P(W, 0, 0), P(W, 1, 16), 160, 10);
+  const hbU = hb * 10;
+  g += `<g transform="${rw}"><clipPath id="rwc${ox}"><polygon points="0,0 160,0 160,${hbU} 0,${hf * 10}"/></clipPath>
+        <g clip-path="url(#rwc${ox})"><g transform="translate(0 ${hbU}) scale(1 -1)">${casingFill(160, hbU, 1)}</g>
+        <rect width="160" height="${hbU}" fill="#000" opacity=".45"/></g>
+        <polygon points="0,${hf * 10} 160,${hbU}" stroke="${C.brassL}" stroke-width="2" fill="none"/></g>`;
+  // sloped face: u along x, v down the slope from the far edge
+  const fm = affine(P(0, hb, 0), P(W, hb, 0), P(0, hf, 16), W * 10, L);
+  const top = (L - 160) / 2;
+  let face = `<rect x="0" y="0" width="${W * 10}" height="${L}" fill="${C.brass}"/>
+    <rect x="10" y="10" width="${W * 10 - 20}" height="${L - 20}" fill="url(#pPlate)"/>
+    <rect x="10" y="10" width="${W * 10 - 20}" height="${L - 20}" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="2"/>
+    <rect x="1" y="1" width="${W * 10 - 2}" height="${L - 2}" fill="none" stroke="${C.brassL}" stroke-width="2"/>`;
+  for (const c of layout) face += COMP[c.t].draw(c.x, top + c.y, c.s || {});
+  g += `<g transform="${fm}">${face}</g>`;
+  // a soft highlight along the far edge
+  g += `<line x1="${P(0, hb, 0)[0]}" y1="${P(0, hb, 0)[1]}" x2="${P(W, hb, 0)[0]}" y2="${P(W, hb, 0)[1]}" stroke="${C.brassL}" stroke-width="2" opacity=".8"/>`;
+  return g;
+}
+const HERO_LAYOUT = [
+  { t: 'label', x: 15, y: 4, s: { text: 'BOILER ROOM', size: 9, w: 130 } },
+  { t: 'nixie', x: 14, y: 20, s: { value: 12 } },
+  { t: 'needle_meter', x: 84, y: 17, s: { value: 11 } },
+  { t: 'lamp', x: 18, y: 72, s: { color: 'gLampG' } }, { t: 'lamp', x: 44, y: 72, s: { color: 'gLampA' } }, { t: 'lamp', x: 70, y: 72, s: { color: 'gLampR', on: false } },
+  { t: 'bar_meter', x: 92, y: 72, s: { value: 10 } },
+  { t: 'large_button', x: 18, y: 102 },
+  { t: 'knob', x: 92, y: 104, s: { value: 6 } },
+  { t: 'label', x: 160 + 10, y: 4, s: { text: 'PUMPS', size: 9, w: 70 } },
+  { t: 'label', x: 160 + 80, y: 4, s: { text: 'VALVES', size: 9, w: 70 } },
+  { t: 'toggle_switch', x: 180, y: 22, s: { on: true } }, { t: 'toggle_switch', x: 205, y: 22, s: { on: false } },
+  { t: 'covered_switch', x: 236, y: 38 }, { t: 'button', x: 274, y: 22 },
+  { t: 'latching_button', x: 274, y: 58 },
+  { t: 'lamp', x: 182, y: 62, s: { color: 'gLampG' } }, { t: 'lamp', x: 205, y: 62, s: { color: 'gLampG', on: false } },
+  { t: 'slider_h', x: 172, y: 96, s: { value: 9 } },
+  { t: 'slider_h', x: 172, y: 126, s: { value: 4 } },
+  { t: 'large_lamp', x: 264, y: 104, s: { color: 'gLampR' } },
+];
+
+function backdrop(w, h) {
+  return `<rect width="${w}" height="${h}" fill="${C.bg0}"/>
+    <radialGradient id="bgGlow" cx="72%" cy="45%" r="70%"><stop offset="0" stop-color="#4a3420"/><stop offset=".6" stop-color="#241b14"/><stop offset="1" stop-color="${C.bg0}"/></radialGradient>
+    <rect width="${w}" height="${h}" fill="url(#bgGlow)"/>
+    <rect width="${w}" height="${h}" fill="url(#pGridFine)"/><rect width="${w}" height="${h}" fill="url(#pGrid)"/>`;
+}
+const svg = (w, h, body) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${DEFS}${body}</svg>`;
+
+// ---------- scenes ----------
+const SCENES = {
+  header() {
+    const w = 1200, h = 400;
+    let b = backdrop(w, h);
+    b += gear(1090, 70, 150, 18, C.brass, .07) + gear(880, 360, 110, 14, C.brass, .06) + gear(80, 420, 120, 14, C.brass, .05);
+    b += drawConsole({ ox: 760, oy: 205, s: 11.4, blocks: 2, angle: 30, layout: HERO_LAYOUT });
+    b += `<rect x="0" y="${h - 10}" width="${w}" height="10" fill="url(#pHazard)" opacity=".9"/>
+      <rect x="0" y="0" width="${w}" height="4" fill="url(#gBrassBar)"/>
+      <text x="64" y="118" class="t-body" font-family="Barlow Condensed" font-weight="700" font-size="26" letter-spacing="9" fill="${C.brass}">CREATE CONTROLLING</text>
+      <text x="60" y="196" font-family="Bungee" font-size="76" fill="${C.text}">CONTROL</text>
+      <text x="60" y="196" font-family="Bungee" font-size="76" fill="none" stroke="${C.brassD}" stroke-width="1" opacity=".5">CONTROL</text>
+      <text x="60" y="268" font-family="Bungee" font-size="54" fill="${C.brass}">CONSOLES</text>
+      <text x="64" y="312" font-family="Barlow Condensed" font-weight="500" font-size="27" fill="${C.muted}">Buttons, switches, knobs, gauges and nixie tubes,</text>
+      <text x="64" y="342" font-family="Barlow Condensed" font-weight="500" font-size="27" fill="${C.muted}">wired straight into Create's Redstone Links.</text>`;
+    // title wordmark lives in the page text; the banner leads with what the mod is
+    return svg(w, h, b);
+  },
+  logo() {
+    const w = 400, h = 400;
+    let b = `<rect width="${w}" height="${h}" fill="${C.bg0}"/>
+      <radialGradient id="lg" cx="50%" cy="45%" r="65%"><stop offset="0" stop-color="#5a3f24"/><stop offset=".7" stop-color="#2a1f16"/><stop offset="1" stop-color="#17130f"/></radialGradient>
+      <rect width="${w}" height="${h}" fill="url(#lg)"/>
+      ${gear(200, 190, 175, 16, C.brass, .9, `stroke="${C.brassDD}" stroke-width="3"`)}
+      <circle cx="200" cy="190" r="132" fill="#211a14"/>
+      <circle cx="200" cy="190" r="132" fill="url(#pGridFine)"/>
+      <circle cx="200" cy="190" r="132" fill="none" stroke="${C.brassDD}" stroke-width="4"/>`;
+    b += drawConsole({ ox: 122, oy: 210, s: 8.4, blocks: 1, angle: 30, layout: [
+      { t: 'nixie', x: 14, y: 12, s: { value: 15 } },
+      { t: 'lamp', x: 92, y: 12, s: { color: 'gLampG' } }, { t: 'lamp', x: 120, y: 12, s: { color: 'gLampA' } },
+      { t: 'toggle_switch', x: 96, y: 40 }, { t: 'toggle_switch', x: 122, y: 40, s: { on: false } },
+      { t: 'large_button', x: 14, y: 72 },
+      { t: 'knob', x: 92, y: 84, s: { value: 11 } },
+    ] });
+    return svg(w, h, b);
+  },
+  components() {
+    const items = [
+      ['button', 'Push Button', 'OUT', 'Pulses 15 while pressed', 'Button + glowstone'],
+      ['latching_button', 'Latching Button', 'OUT', 'Click on, click off', 'Lever + glowstone'],
+      ['large_button', 'Large Button', 'OUT', 'The big red one', 'Pressure plate + glowstone'],
+      ['toggle_switch', 'Toggle Switch', 'OUT', 'Latching 0 / 15', 'Lever'],
+      ['covered_switch', 'Guarded Switch', 'OUT', 'Lift the lid, flip the switch', 'Lever + iron sheet'],
+      ['knob', 'Knob', 'OUT', 'Analog 0 to 15', 'Analog lever'],
+      ['slider_h', 'Slider', 'OUT', 'Analog, horizontal or vertical', 'Analog lever'],
+      ['lamp', 'Indicator Lamp', 'IN', 'Glows with signal strength', 'Redstone lamp'],
+      ['large_lamp', 'Large Lamp', 'IN', 'Same, but you can’t miss it', '2 redstone lamps'],
+      ['needle_meter', 'Needle Gauge', 'IN', 'Needle sweeps 0 to 15', 'Speedometer'],
+      ['bar_meter', 'Bar Meter', 'IN', 'Segmented level bar', 'Speedometer'],
+      ['nixie', 'Nixie Readout', 'IN', 'Shows the exact value', 'Nixie tube'],
+      ['label', 'Label', '—', 'Name your controls', 'Any dye'],
+    ];
+    const cols = 5, cw = 220, ch = 236, gap = 14, pad = 27;
+    const w = 1200, rows = Math.ceil((items.length + 2) / cols), h = pad * 2 + rows * ch + (rows - 1) * gap;
+    let b = backdrop(w, h);
+    items.forEach(([id, name, dir, what, cost], i) => {
+      const cx = pad + (i % cols) * (cw + gap), cy = pad + Math.floor(i / cols) * (ch + gap), c = COMP[id];
+      const sc = Math.min(2.6, 104 / Math.max(c.w, c.h + (id === 'covered_switch' ? 20 : 0)));
+      const ix = cx + cw / 2 - c.w * sc / 2, iy = cy + 18 + (118 - c.h * sc) / 2 + (id === 'covered_switch' ? 20 : 0);
+      const dirCol = dir === 'OUT' ? C.amber : dir === 'IN' ? C.blue : C.muted;
+      const art = id === 'label'
+        ? `<g transform="translate(${cx + 30} ${cy + 50}) scale(2.7)"><rect x="-3" y="-4" width="66" height="20" rx="3" fill="url(#pPlate)"/>${c.draw(0, 0, { text: 'PUMPS', size: 9 })}</g>`
+        : `<g transform="translate(${ix} ${iy}) scale(${sc})">${c.draw(0, 0)}</g>`;
+      b += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="10" fill="#211913" stroke="${C.brassDD}" stroke-width="2"/>
+        <rect x="${cx + 10}" y="${cy + 10}" width="${cw - 20}" height="136" rx="6" fill="#151110"/>
+        <rect x="${cx + 10}" y="${cy + 10}" width="${cw - 20}" height="136" rx="6" fill="url(#pGridFine)"/>
+        ${art}
+        <rect x="${cx + cw - 52}" y="${cy + 16}" width="36" height="18" rx="4" fill="${dirCol}" opacity=".16"/>
+        <text x="${cx + cw - 34}" y="${cy + 30}" text-anchor="middle" font-family="Barlow Condensed" font-weight="700" font-size="14" letter-spacing="1" fill="${dirCol}">${dir}</text>
+        <text x="${cx + 16}" y="${cy + 172}" font-family="Bungee" font-size="17" fill="${C.text}">${name}</text>
+        <text x="${cx + 16}" y="${cy + 196}" font-family="Barlow Condensed" font-weight="500" font-size="18" fill="${C.muted}">${what}</text>
+        <text x="${cx + 16}" y="${cy + 222}" font-family="Barlow Condensed" font-weight="600" font-size="15" fill="${C.brass}">COST · ${cost.toUpperCase()}</text>`;
+    });
+    // legend tile across the last two slots
+    const li = items.length, lx = pad + (li % cols) * (cw + gap), ly = pad + Math.floor(li / cols) * (ch + gap), lw = cw * 2 + gap;
+    b += `<rect x="${lx}" y="${ly}" width="${lw}" height="${ch}" rx="10" fill="#1b1511" stroke="${C.brass}" stroke-width="2" stroke-dasharray="6 5"/>
+      <text x="${lx + 26}" y="${ly + 50}" font-family="Bungee" font-size="22" fill="${C.brass}">How to read this</text>
+      <rect x="${lx + 26}" y="${ly + 74}" width="44" height="22" rx="4" fill="${C.amber}" opacity=".16"/><text x="${lx + 48}" y="${ly + 91}" text-anchor="middle" font-family="Barlow Condensed" font-weight="700" font-size="16" fill="${C.amber}">OUT</text>
+      <text x="${lx + 84}" y="${ly + 91}" font-family="Barlow Condensed" font-weight="500" font-size="20" fill="${C.text}">sends a signal on its Redstone Link frequency</text>
+      <rect x="${lx + 26}" y="${ly + 110}" width="44" height="22" rx="4" fill="${C.blue}" opacity=".16"/><text x="${lx + 48}" y="${ly + 127}" text-anchor="middle" font-family="Barlow Condensed" font-weight="700" font-size="16" fill="${C.blue}">IN</text>
+      <text x="${lx + 84}" y="${ly + 127}" font-family="Barlow Condensed" font-weight="500" font-size="20" fill="${C.text}">listens to a frequency and shows its strength</text>
+      <text x="${lx + 26}" y="${ly + 172}" font-family="Barlow Condensed" font-weight="500" font-size="19" fill="${C.muted}">Parts are paid from your inventory when you mount them</text>
+      <text x="${lx + 26}" y="${ly + 196}" font-family="Barlow Condensed" font-weight="500" font-size="19" fill="${C.muted}">and refunded when you take them off. Free in creative.</text>`;
+    return svg(w, h, b);
+  },
+  steps() {
+    const w = 1200, h = 430, pad = 27, gap = 16, cw = (w - pad * 2 - gap * 3) / 4, ch = h - pad * 2;
+    let b = backdrop(w, h);
+    const card = (i, title, sub, art, hint) => {
+      const x = pad + i * (cw + gap), y = pad;
+      return `<rect x="${x}" y="${y}" width="${cw}" height="${ch}" rx="12" fill="#211913" stroke="${C.brassDD}" stroke-width="2"/>
+        <circle cx="${x + 34}" cy="${y + 36}" r="19" fill="url(#gBrass)" stroke="${C.brassDD}" stroke-width="2"/>
+        <text x="${x + 34}" y="${y + 44}" text-anchor="middle" font-family="Bungee" font-size="20" fill="#2a1d0c">${i + 1}</text>
+        <text x="${x + 64}" y="${y + 46}" font-family="Bungee" font-size="24" fill="${C.text}">${title}</text>
+        <rect x="${x + 12}" y="${y + 70}" width="${cw - 24}" height="226" rx="8" fill="#151110"/>
+        <rect x="${x + 12}" y="${y + 70}" width="${cw - 24}" height="226" rx="8" fill="url(#pGridFine)"/>
+        <g transform="translate(${x + 12} ${y + 70})">${art}</g>
+        <text x="${x + 20}" y="${y + 324}" font-family="Barlow Condensed" font-weight="500" font-size="19" fill="${C.muted}">${sub}</text>
+        <text x="${x + 20}" y="${y + 356}" font-family="Barlow Condensed" font-weight="700" font-size="17" letter-spacing="1" fill="${C.brass}">${hint}</text>`;
+    };
+    const iw = cw - 24;
+    // 1 craft: 3x3 grid, two rows used
+    const cell = (cx, cy, txt, col) => `<rect x="${cx}" y="${cy}" width="60" height="60" rx="4" fill="#2a2420" stroke="#4a3d31" stroke-width="2"/>
+      ${txt ? `<rect x="${cx + 10}" y="${cy + 7}" width="40" height="22" rx="3" fill="${col}"/>` + txt.split(' ').map((w, i, a) => `<text x="${cx + 30}" y="${cy + (a.length > 1 ? 41 + i * 12 : 48)}" text-anchor="middle" font-family="Barlow Condensed" font-weight="600" font-size="12" fill="${C.text}">${w}</text>`).join('') : ''}`;
+    let craft = '';
+    const gx = (iw - 192) / 2;
+    [['Iron Sheet', '#b9bfc2'], ['Iron Sheet', '#b9bfc2'], ['Iron Sheet', '#b9bfc2'], ['Transmitter', '#b85b3a'], ['Andesite Casing', '#8d8a80'], ['Redstone Link', '#c24c3a'], [null], [null], [null]]
+      .forEach(([t, c], i) => craft += cell(gx + (i % 3) * 66, 14 + Math.floor(i / 3) * 66, t, c));
+    craft += `<path d="M${iw / 2 - 14} 218 l14 -12 l14 12" fill="none" stroke="${C.brass}" stroke-width="0"/>`;
+    // 2 shape: side profiles
+    let shape = '';
+    [0, 15, 30, 45].forEach((a, i) => {
+      const bx = 14 + (i % 2) * (iw / 2 - 4), by = 24 + Math.floor(i / 2) * 104, s = 3.8, hf = a === 45 ? 0 : 4, hb = hf + 16 * Math.tan(a * Math.PI / 180);
+      const base = by + 74;
+      shape += `<polygon points="${bx},${base} ${bx + 16 * s},${base} ${bx + 16 * s},${base - hf * s} ${bx},${base - hb * s}" fill="${C.wood}" stroke="${C.brass}" stroke-width="3" stroke-linejoin="round"/>
+        <line x1="${bx}" y1="${base - hb * s}" x2="${bx + 16 * s}" y2="${base - hf * s}" stroke="${C.brassL}" stroke-width="5"/>
+        <text x="${bx + 16 * s + 8}" y="${base}" font-family="Bungee" font-size="17" fill="${C.text}">${a}°</text>`;
+    });
+    // 3 design: mini designer
+    let design = `<rect x="14" y="16" width="44" height="196" rx="4" fill="#2a2420"/>`;
+    ['gRed', 'gYellow', 'gLampG', 'gBrass', 'gIron', 'gLampA'].forEach((g, i) => design += `<rect x="20" y="${24 + i * 31}" width="32" height="25" rx="3" fill="#3a302a" stroke="#5a4b3c"/><circle cx="36" cy="${36.5 + i * 31}" r="7" fill="url(#${g})"/>`);
+    const fx = 72, fy = 22, fs = iw - 72 - 14;
+    design += `<rect x="${fx}" y="${fy}" width="${fs}" height="${fs}" fill="url(#pPlate)" stroke="${C.brass}" stroke-width="3"/>`;
+    for (let i = 1; i < 16; i++) design += `<path d="M${fx + i * fs / 16} ${fy}v${fs}M${fx} ${fy + i * fs / 16}h${fs}" stroke="#fff" stroke-opacity=".05"/>`;
+    const k = fs / 160;
+    design += `<g transform="translate(${fx} ${fy}) scale(${k})">${COMP.nixie.draw(10, 10, { value: 7 })}${COMP.lamp.draw(90, 20)}${COMP.lamp.draw(120, 20, { color: 'gLampR' })}${COMP.large_button.draw(14, 90)}${COMP.knob.draw(100, 96)}</g>
+      <rect x="${fx + 98 * k - 3}" y="${fy + 94 * k - 3}" width="${44 * k + 6}" height="${44 * k + 6}" fill="none" stroke="${C.amber}" stroke-width="2" stroke-dasharray="4 3"/>
+      <path d="M${fx + 138 * k} ${fy + 136 * k} l16 10 l-6 2 l4 8 l-3 1.5 l-4 -8 l-5 4z" fill="#fff" stroke="#000" stroke-width="1"/>`;
+    // 4 link: two frequency slots -> waves -> contraption gear
+    let link = `<rect x="22" y="58" width="44" height="44" rx="4" fill="#2a2420" stroke="${C.brass}" stroke-width="2"/><rect x="30" y="66" width="28" height="28" rx="3" fill="#5ab8ff"/>
+      <rect x="22" y="112" width="44" height="44" rx="4" fill="#2a2420" stroke="${C.brass}" stroke-width="2"/><rect x="30" y="120" width="28" height="28" rx="3" fill="#e7b52c"/>
+      <text x="44" y="186" text-anchor="middle" font-family="Barlow Condensed" font-weight="600" font-size="14" fill="${C.muted}">frequency</text>`;
+    for (let i = 0; i < 3; i++) link += `<path d="M${92 + i * 16} ${80} q14 27 0 54" fill="none" stroke="${C.red}" stroke-width="4" stroke-linecap="round" opacity="${1 - i * .25}"/>`;
+    link += gear(iw - 58, 107, 46, 12, C.brass, 1, `stroke="${C.brassDD}" stroke-width="2"`) + `<circle cx="${iw - 58}" cy="107" r="17" fill="#151110"/>
+      <text x="${iw - 58}" y="186" text-anchor="middle" font-family="Barlow Condensed" font-weight="600" font-size="14" fill="${C.muted}">your contraption</text>`;
+    b += card(0, 'Craft', 'One recipe, one console.', craft, 'FLOOR, WALL OR CEILING');
+    b += card(1, 'Shape', 'Any slope from flat to 45°.', shape, 'SNEAK + WRENCH: PRESETS');
+    b += card(2, 'Design', 'Drag parts onto a 16×16 face.', design, 'SNEAK + EMPTY HAND');
+    b += card(3, 'Link', 'Two items set the frequency.', link, 'WORKS WITH ANY REDSTONE LINK');
+    return svg(w, h, b);
+  },
+};
+
+// dividers: #divider-<slug>
+const DIVIDERS = {
+  features: 'Features', components: 'Components', 'getting-started': 'Getting Started',
+  casings: 'Casings & Blueprints', compatibility: 'Compatibility', faq: 'FAQ', credits: 'Credits',
+};
+function divider(title) {
+  const w = 1200, h = 96;
+  let b = `<rect width="${w}" height="${h}" fill="${C.bg0}"/><rect width="${w}" height="${h}" fill="url(#pGridFine)"/>
+    ${gear(52, 48, 30, 10, C.brass, 1, `stroke="${C.brassDD}" stroke-width="2"`)}<circle cx="52" cy="48" r="9" fill="${C.bg0}"/>
+    <text x="100" y="63" font-family="Bungee" font-size="40" fill="${C.text}">${title.toUpperCase()}</text>`;
+  return { w, h, b };
+}
+
+// ---------- render ----------
+(async () => {
+  await Promise.all(['16px Bungee', '500 16px "Barlow Condensed"', '600 16px "Barlow Condensed"', '700 16px "Barlow Condensed"'].map(f => document.fonts.load(f)));
+  const key = location.hash.slice(1) || 'header';
+  let out;
+  if (key.startsWith('divider-')) {
+    const { w, h, b } = divider(DIVIDERS[key.slice(8)]);
+    // the rule starts after the measured title
+    document.getElementById('out').innerHTML = svg(w, h, b);
+    const t = document.querySelector('svg text').getBBox();
+    const x0 = t.x + t.width + 28;
+    out = svg(w, h, b + `<rect x="${x0}" y="45" width="${w - x0 - 24}" height="6" rx="3" fill="url(#gBrassBar)"/>
+      <rect x="${x0}" y="57" width="${(w - x0 - 24) * .35}" height="6" rx="3" fill="url(#pHazard)"/>
+      ${rivet(w - 24, 48, 7)}`);
+  } else out = SCENES[key]();
+  document.getElementById('out').innerHTML = out;
+  const s = document.querySelector('svg');
+  document.title = s.getAttribute('width') + 'x' + s.getAttribute('height');
+})();
+</script>
+</body>
+</html>

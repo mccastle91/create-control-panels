@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "minecraft:paper" },
+    { "item": "minecraft:paper" },
+    { "item": "minecraft:lapis_lazuli" },
+    { "item": "create:brass_sheet" }
+  ],
+  "result": {
+    "id": "create_controlling:panel_blueprint",
+    "count": 1
+  }
+}

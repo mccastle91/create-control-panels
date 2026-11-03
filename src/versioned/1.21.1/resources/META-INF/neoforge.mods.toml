@@ -1,0 +1,36 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "${mod_license}"
+issueTrackerURL = "https://github.com/mccastle91/create-control-panels/issues"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
+description = '''
+Buildable, customizable control panels for Create.
+Place a panel, arrange buttons, switches, dials, indicator lights and labels on it,
+and bind each element to Create's Redstone Link frequencies.
+'''
+
+[[dependencies.create_controlling]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.create_controlling]]
+modId = "minecraft"
+type = "required"
+versionRange = "${mc_compat}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.create_controlling]]
+modId = "create"
+type = "required"
+versionRange = "[${create_min},)"
+ordering = "AFTER"
+side = "BOTH"
