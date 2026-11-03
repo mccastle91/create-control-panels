@@ -34,3 +34,11 @@ type = "required"
 versionRange = "[${create_min},)"
 ordering = "AFTER"
 side = "BOTH"
+
+# Optional: drag items from JEI into frequency slots
+[[dependencies.create_controlling]]
+modId = "jei"
+type = "optional"
+versionRange = "[19,)"
+ordering = "NONE"
+side = "CLIENT"

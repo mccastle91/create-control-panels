@@ -28,6 +28,7 @@ sourceSets.main {
 repositories {
     maven("https://maven.createmod.net") { name = "Create" }          // Create, Ponder, Flywheel
     maven("https://maven.ithundxr.dev/snapshots") { name = "Registrate" }
+    maven("https://maven.blamejared.com") { name = "JEI" }
 }
 
 dependencies {
@@ -45,6 +46,11 @@ dependencies {
             prefer(property("deps.registrate") as String)
         }
     }
+
+    // JEI is optional: compile against its API, run the full mod in dev only
+    compileOnly("mezz.jei:jei-$mcVersion-common-api:${property("deps.jei")}")
+    compileOnly("mezz.jei:jei-$mcVersion-neoforge-api:${property("deps.jei")}")
+    runtimeOnly("mezz.jei:jei-$mcVersion-neoforge:${property("deps.jei")}")
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")

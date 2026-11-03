@@ -4,8 +4,8 @@ import net.minecraft.world.item.DyeColor;
 
 /**
  * Rotary knob (Control Engineering's variac): the pointer sweeps 270°, from
- * lower-left (0) over the top to lower-right (15). Clicking sets the value to
- * the angle of the point clicked; sneak-clicking steps one towards it.
+ * lower-left (0) over the top to lower-right (15). Clicking steps it one
+ * forward, sneak-clicking one back.
  */
 public class KnobElement extends AnalogElement {
 
@@ -25,21 +25,5 @@ public class KnobElement extends AnalogElement {
     /** Pointer angle for a value, degrees clockwise from the far edge. */
     public static float angleFor(int value) {
         return -HALF_SWEEP + value / (float) MAX_VALUE * 2 * HALF_SWEEP;
-    }
-
-    /** Value for a click at ({@code localX}, {@code localY}) inside the knob's footprint. */
-    public int valueAt(float localX, float localY) {
-        float dx = localX - width() / 2f;
-        float dy = localY - depth() / 2f;
-        // face y grows towards the viewer, so "up" (the far edge) is -y
-        double degrees = Math.toDegrees(Math.atan2(dx, -dy));
-        double clamped = Math.max(-HALF_SWEEP, Math.min(HALF_SWEEP, degrees));
-        return (int) Math.round((clamped + HALF_SWEEP) / (2 * HALF_SWEEP) * MAX_VALUE);
-    }
-
-    @Override
-    public boolean click(float localX, float localY, boolean sneaking) {
-        int target = valueAt(localX, localY);
-        return sneaking ? stepTowards(target) : setValue(target);
     }
 }

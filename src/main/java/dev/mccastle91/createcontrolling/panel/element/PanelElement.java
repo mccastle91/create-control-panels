@@ -183,6 +183,11 @@ public abstract class PanelElement {
         return isTransmitter();
     }
 
+    /** Whether sneak-clicking acts on this element instead of opening the designer. */
+    public boolean takesSneakClicks() {
+        return false;
+    }
+
     /**
      * A click at ({@code localX}, {@code localY}) px inside this element's
      * footprint. Returns true if the element's state changed.

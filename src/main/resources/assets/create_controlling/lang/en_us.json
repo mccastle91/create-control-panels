@@ -38,8 +38,9 @@
   "gui.create_controlling.delete": "Remove",
   "gui.create_controlling.frequency_slots": "Frequency",
   "gui.create_controlling.options": "Options",
-  "gui.create_controlling.pick_frequency": "Pick a frequency item",
-  "gui.create_controlling.clear": "Clear",
+  "gui.create_controlling.pick_frequency": "Set frequency",
+  "gui.create_controlling.frequency_slot_hint": "Drag an item here from your inventory or JEI; right-click clears",
+  "gui.create_controlling.done": "Done",
   "gui.create_controlling.color": "Color",
   "gui.create_controlling.apply": "Set Text",
   "gui.create_controlling.align": "Align",
@@ -65,5 +66,5 @@
   "create_controlling.ponder.control_panel.text_1": "Control Consoles carry buttons, switches, knobs, sliders, lamps, gauges and nixie readouts on a sloped face",
   "create_controlling.ponder.control_panel.text_2": "Sneak-use with an empty hand to open the Console Designer; each component costs parts to mount",
   "create_controlling.ponder.control_panel.text_3": "Each component carries its own Redstone Link frequency pair — consoles talk directly to Redstone Links, Linked Controllers, and other consoles",
-  "create_controlling.ponder.control_panel.text_4": "Use the console to press buttons and flip switches; sneak-scroll on a knob or slider fine-tunes its value. Sneak-wrench to change the angle (wall consoles can tilt up or down), or apply a Create casing to re-dress it"
+  "create_controlling.ponder.control_panel.text_4": "Use the console to press buttons and flip switches; click a knob or slider to step it up, sneak-click to step it down (sneak-scroll works too). Sneak-wrench to change the angle (wall consoles can tilt up or down), or apply a Create casing to re-dress it"
 }

@@ -29,6 +29,7 @@ v1 (phases 1–8 below) was the flat-panel version. **v2** redesigns it towards 
 | Create (players) | 6.0.8 or newer | 6.0.8 or newer |
 | Create (built/tested against) | 6.0.8 | 6.0.10 |
 | Ponder / Flywheel / Registrate | 1.0.91 / 1.0.5 / MC1.20-1.3.3 | 1.0.82 / 1.0.6 / MC1.21-1.3.0+67 |
+| JEI (optional) | 15.x (built against 15.74.0.234) | 19.x (built against 19.70.0.469) |
 | Java | 17 | 21 |
 
 6.0.8 is the newest Create release published for both Minecraft versions, so it's the shared minimum. The companion versions match what each Create release bundles. All versions live in [stonecutter.properties.toml](stonecutter.properties.toml).
@@ -49,8 +50,8 @@ Jars land in `versions/<version>/build/libs/`. The 1.20.1 jar there is the reobf
 ## Playing
 
 - **Craft** a Control Console (three iron sheets over a transmitter, andesite casing and Redstone Link). Place it on a floor, wall or ceiling like a lever.
-- **Sneak-use with an empty hand** to open the Console Designer: add components (each costs parts — hover a palette button to see what), drag them into place, give them a Redstone Link frequency, and set the console's angle.
-- **Use** a component to operate it; **sneak-scroll** over a knob or slider to fine-tune it.
+- **Sneak-use with an empty hand** to open the Console Designer: add components (each costs parts — hover a palette button to see what), drag them into place, give them a Redstone Link frequency, and set the console's angle. The two frequency slots are coloured like the red and blue markers on Create's Redstone Link; click either one to open the frequency chooser — both slots above your inventory — and drag an item from your inventory onto a slot (nothing is used up); right-click a slot to clear it. With JEI installed, its item list shows beside the chooser and you can drag any item from it onto a slot too.
+- **Use** a component to operate it; using a knob or slider steps it up one, **sneak-use** steps it down one (**sneak-scroll** also nudges it). Sneak-use anywhere else opens the designer.
 - **Sneak-wrench** a console to step through the 0/15/30/45° angles. Floor and ceiling consoles slope one way, towards you; wall consoles start flat and can tilt either way — the wrench runs through the angles with the top edge standing out, then with the bottom edge out (in the designer, the *Top out / Bottom out* button swaps them). **Right-click with a Create casing** (Andesite, Brass, Copper or Train Casing, or a Block of Industrial Iron) to re-dress it.
 - Breaking a console keeps its design; a **Console Blueprint** copies a design onto other consoles, charging only for parts the target lacks.
 

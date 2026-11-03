@@ -1,12 +1,11 @@
 package dev.mccastle91.createcontrolling.panel.element;
 
-import net.minecraft.util.Mth;
 import net.minecraft.world.item.DyeColor;
 
 /**
  * Linear fader along its long axis. Horizontal sliders run 0 (left) to 15
- * (right); vertical ones 0 (near edge) to 15 (far edge). Clicking sets the
- * value at the clicked point; sneak-clicking steps one towards it.
+ * (right); vertical ones 0 (near edge) to 15 (far edge). Clicking steps it
+ * one forward, sneak-clicking one back.
  */
 public class SliderElement extends AnalogElement {
 
@@ -33,18 +32,5 @@ public class SliderElement extends AnalogElement {
     /** Knob position along the track as a 0-1 fraction for a value. */
     public static float fractionFor(int value) {
         return value / (float) MAX_VALUE;
-    }
-
-    public int valueAt(float localX, float localY) {
-        float length = (vertical ? depth() : width()) - 2 * END_MARGIN;
-        float along = vertical ? depth() - END_MARGIN - localY : localX - END_MARGIN;
-        float fraction = Mth.clamp(along / length, 0f, 1f);
-        return Math.round(fraction * MAX_VALUE);
-    }
-
-    @Override
-    public boolean click(float localX, float localY, boolean sneaking) {
-        int target = valueAt(localX, localY);
-        return sneaking ? stepTowards(target) : setValue(target);
     }
 }

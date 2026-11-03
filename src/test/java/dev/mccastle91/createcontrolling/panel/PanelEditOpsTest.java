@@ -251,12 +251,16 @@ class PanelEditOpsTest {
     }
 
     @Test
-    void knobClickSetsTheValueAtThePointerAngle() {
+    void knobClickStepsForwardAndSneakClickStepsBack() {
         KnobElement knob = PanelElements.KNOB.create();
-        float c = knob.width() / 2;
-        assertEquals(0, knob.valueAt(c - 2, c + 2), "lower left is 0");
-        assertEquals(15, knob.valueAt(c + 2, c + 2), "lower right is 15");
-        assertEquals(8, knob.valueAt(c, c - 2), "straight up is the middle");
+        assertTrue(knob.takesSneakClicks());
+        assertTrue(knob.click(0, 0, false));
+        assertEquals(1, knob.value(), "click steps forward, wherever it lands");
+        assertTrue(knob.click(0, 0, true));
+        assertEquals(0, knob.value(), "sneak-click steps back");
+        assertFalse(knob.click(0, 0, true), "already at min: no change");
+        knob.setValue(15);
+        assertFalse(knob.click(0, 0, false), "already at max: no change");
     }
 
     @Test

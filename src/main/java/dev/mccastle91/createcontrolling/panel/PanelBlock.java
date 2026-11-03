@@ -290,25 +290,29 @@ public class PanelBlock extends FaceAttachedHorizontalDirectionalBlock implement
     }
 
     private InteractionResult interact(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        // Edit mode: sneak-use opens the designer (client screen)
-        if (player.isShiftKeyDown()) {
+        boolean sneaking = player.isShiftKeyDown();
+        Optional<ConsolePicker.Pick> pick = Optional.empty();
+        if (level.getBlockEntity(pos) instanceof PanelBlockEntity panel) {
+            Vec3 origin = Vec3.atLowerCornerOf(pos);
+            Vec3 eye = player.getEyePosition().subtract(origin);
+            Vec3 direction = hitResult.getLocation().subtract(origin).subtract(eye);
+            pick = ConsolePicker.pick(state, panel.shape(), panel.getLayout(), eye, direction);
+        }
+
+        // Edit mode: sneak-use opens the designer (client screen), unless the
+        // crosshair is on a component that takes sneak-clicks (knobs, sliders)
+        if (sneaking && !pick.map(hit -> hit.element().takesSneakClicks()).orElse(false)) {
             if (level.isClientSide && CCClientHooks.OPEN_DESIGNER != null)
                 CCClientHooks.OPEN_DESIGNER.accept(pos);
             return InteractionResult.SUCCESS;
         }
-        if (!(level.getBlockEntity(pos) instanceof PanelBlockEntity panel))
+        if (pick.isEmpty() || !(level.getBlockEntity(pos) instanceof PanelBlockEntity panel))
             return InteractionResult.PASS;
 
         // Play mode: the component under the crosshair acts, server-side
-        Vec3 origin = Vec3.atLowerCornerOf(pos);
-        Vec3 eye = player.getEyePosition().subtract(origin);
-        Vec3 direction = hitResult.getLocation().subtract(origin).subtract(eye);
-        Optional<ConsolePicker.Pick> pick = ConsolePicker.pick(state, panel.shape(), panel.getLayout(), eye, direction);
-        if (pick.isEmpty())
-            return InteractionResult.PASS;
         if (!level.isClientSide) {
             ConsolePicker.Pick hit = pick.get();
-            panel.clickElement(hit.element().id(), hit.localX(), hit.localY(), false);
+            panel.clickElement(hit.element().id(), hit.localX(), hit.localY(), sneaking);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

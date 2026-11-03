@@ -44,6 +44,11 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
     /** Lever rod length (px) shared by the toggle and guarded switches; the tip adds {@link #LEVER_TIP}. */
     private static final float LEVER_LENGTH = 1.1f;
     private static final float LEVER_TIP = 0.8f;
+    /**
+     * Height of a decal over the surface it lies on, px: enough for the depth
+     * buffer to keep them apart at range, too little to see.
+     */
+    private static final float LIFT = 0.05f;
 
     private TextureAtlasSprite component, brass, iron;
     private int light;
@@ -154,19 +159,21 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
     private void coveredSwitch(ComponentPainter p, float w, float d, CoveredSwitchElement.State state, int color) {
         toggleBase(p, w, d);
         lever(p, w / 2, d / 2, 0.5f, state == CoveredSwitchElement.State.ARMED, LEVER_LENGTH, 0xFFDDDDDD);
-        float top = 2.4f, t = 0.2f, post = 0.25f;
-        // posts just inside the lid's side walls, clear of the lever and its pivot block
-        p.box(t, 0.05f, 0.25f, t + post, 0.45f, top, brass, 0xFFFFFFFF, light);
-        p.box(w - t - post, 0.05f, 0.25f, w - t, 0.45f, top, brass, 0xFFFFFFFF, light);
-        p.box(t + post, 0.05f, top - 0.3f, w - t - post, 0.25f, top - 0.05f, brass, 0xFFFFFFFF, light);
+        float top = 2.4f, t = 0.2f, post = 0.25f, base = 0.25f;
+        // posts just inside the lid's side walls, clear of the lever and its
+        // pivot block; they stop under the lid's top so no faces coincide
+        p.box(t, 0.05f, base, t + post, 0.45f, top - t, brass, 0xFFFFFFFF, light);
+        p.box(w - t - post, 0.05f, base, w - t, 0.45f, top - t, brass, 0xFFFFFFFF, light);
+        p.box(t + post, 0.05f, top - t - 0.25f, w - t - post, 0.25f, top - t, brass, 0xFFFFFFFF, light);
         p.push();
         p.translate(0, 0, top);
         if (state != CoveredSwitchElement.State.CLOSED)
             p.rotateX(90);
+        // the walls stand on the base plate, not beside its edges
         p.box(0, 0, -t, w, d, 0, component, color, light);
-        p.box(0, 0, -top, t, d, -t, component, color, light);
-        p.box(w - t, 0, -top, w, d, -t, component, color, light);
-        p.box(t, d - t, -top, w - t, d, -t, component, color, light);
+        p.box(0, 0, base - top, t, d, -t, component, color, light);
+        p.box(w - t, 0, base - top, w, d, -t, component, color, light);
+        p.box(t, d - t, base - top, w - t, d, -t, component, color, light);
         p.pop();
     }
 
@@ -186,7 +193,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         float body = r - 0.5f, cap = body - 0.4f;
         p.box(-body, -body, 0.25f, body, body, h - 0.4f, component, color, light);
         p.box(-cap, -cap, h - 0.4f, cap, cap, h, component, color, light);
-        p.box(-0.25f, -body - 0.01f, h - 0.6f, 0.25f, -0.3f, h + 0.01f, component, 0xFFF0F0F0, light);
+        p.box(-0.25f, -body - LIFT, h - 0.6f, 0.25f, -0.3f, h + LIFT, component, 0xFFF0F0F0, light);
         p.pop();
     }
 
@@ -195,15 +202,15 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         float f = SliderElement.fractionFor(value);
         float m = SliderElement.END_MARGIN;
         if (vertical) {
-            p.plate(w / 2 - 0.2f, m / 2, w / 2 + 0.2f, d - m / 2, 0.26f, component, DARK, light);
+            p.plate(w / 2 - 0.2f, m / 2, w / 2 + 0.2f, d - m / 2, 0.25f + LIFT, component, DARK, light);
             float cy = d - m - f * (d - 2 * m);
             p.box(0.15f, cy - m, 0.25f, w - 0.15f, cy + m, h, component, color, light);
-            p.plate(0.15f, cy - 0.12f, w - 0.15f, cy + 0.12f, h + 0.01f, component, DARK, light);
+            p.plate(0.15f, cy - 0.12f, w - 0.15f, cy + 0.12f, h + LIFT, component, DARK, light);
         } else {
-            p.plate(m / 2, d / 2 - 0.2f, w - m / 2, d / 2 + 0.2f, 0.26f, component, DARK, light);
+            p.plate(m / 2, d / 2 - 0.2f, w - m / 2, d / 2 + 0.2f, 0.25f + LIFT, component, DARK, light);
             float cx = m + f * (w - 2 * m);
             p.box(cx - m, 0.15f, 0.25f, cx + m, d - 0.15f, h, component, color, light);
-            p.plate(cx - 0.12f, 0.15f, cx + 0.12f, d - 0.15f, h + 0.01f, component, DARK, light);
+            p.plate(cx - 0.12f, 0.15f, cx + 0.12f, d - 0.15f, h + LIFT, component, DARK, light);
         }
     }
 
@@ -213,33 +220,33 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         p.box(0, 0, 0, w, d, h, brass, 0xFFFFFFFF, light);
         boolean lit = strength > 0;
         int lens = lit ? scale(color, 0.55f + 0.6f * strength / 15f) : scale(color, 0.35f);
-        p.plate(bezel, bezel, w - bezel, d - bezel, h + 0.005f, component, lens, lit ? ComponentPainter.FULL_BRIGHT : light);
+        p.plate(bezel, bezel, w - bezel, d - bezel, h + LIFT, component, lens, lit ? ComponentPainter.FULL_BRIGHT : light);
     }
 
     private void needleMeter(ComponentPainter p, float w, float d, int strength) {
         p.box(0, 0, 0, w, d, 0.5f, brass, 0xFFFFFFFF, light);
-        p.plate(0.5f, 0.5f, w - 0.5f, d - 0.5f, 0.51f, component, DIAL_FACE, light);
+        p.plate(0.5f, 0.5f, w - 0.5f, d - 0.5f, 0.5f + LIFT, component, DIAL_FACE, light);
         float px = w / 2, py = d - 1;
         for (int tick = 0; tick <= 4; tick++) {
             p.push();
             p.translate(px, py, 0);
             p.rotateZ(-NeedleMeterElement.HALF_SWEEP + tick * NeedleMeterElement.HALF_SWEEP / 2);
-            p.plate(-0.1f, -2.5f, 0.1f, -2.0f, 0.52f, component, DARK, light);
+            p.plate(-0.1f, -2.5f, 0.1f, -2.0f, 0.5f + 2 * LIFT, component, DARK, light);
             p.pop();
         }
         p.push();
         p.translate(px, py, 0);
         p.rotateZ(NeedleMeterElement.angleFor(strength));
-        p.box(-0.12f, -2.6f, 0.55f, 0.12f, 0.3f, 0.65f, component, NEEDLE, light);
+        p.box(-0.12f, -2.6f, 0.5f + 3 * LIFT, 0.12f, 0.3f, 0.75f, component, NEEDLE, light);
         p.pop();
-        p.box(px - 0.4f, py - 0.4f, 0.5f, px + 0.4f, py + 0.4f, 0.75f, brass, 0xFFFFFFFF, light);
+        p.box(px - 0.4f, py - 0.4f, 0.5f, px + 0.4f, py + 0.4f, 0.85f, brass, 0xFFFFFFFF, light);
     }
 
     private void barMeter(ComponentPainter p, float w, float d, int strength, int color) {
         p.box(0, 0, 0, w, d, 0.5f, iron, 0xFFFFFFFF, light);
-        p.plate(0.5f, 0.5f, w - 0.5f, d - 0.5f, 0.51f, component, DARK, light);
+        p.plate(0.5f, 0.5f, w - 0.5f, d - 0.5f, 0.5f + LIFT, component, DARK, light);
         if (strength > 0)
-            p.plate(0.5f, 0.5f, 0.5f + (w - 1) * strength / 15f, d - 0.5f, 0.53f, component, color,
+            p.plate(0.5f, 0.5f, 0.5f + (w - 1) * strength / 15f, d - 0.5f, 0.5f + 2 * LIFT, component, color,
                     ComponentPainter.FULL_BRIGHT);
     }
 
@@ -293,6 +300,6 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
             case CENTER -> label.x() + (label.width() - textWidth) / 2f;
         };
         // a font line includes descender space: nudge glyphs to sit centred
-        p.faceText(font, text, x, label.y() + lineHeight * 0.12f, 0.02f, lineHeight, 0xFF000000 | label.color(), light);
+        p.faceText(font, text, x, label.y() + lineHeight * 0.12f, LIFT, lineHeight, 0xFF000000 | label.color(), light);
     }
 }

@@ -18,11 +18,13 @@ import dev.mccastle91.createcontrolling.panel.element.ReceiverElement;
 import dev.mccastle91.createcontrolling.panel.element.SwitchElement;
 import dev.mccastle91.createcontrolling.util.McCompat;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -56,6 +58,12 @@ public class PanelDesignerScreen extends Screen {
 
     private static final int PLATE = 0xFF48443F;
     private static final int GOLD_TEXT = 0xE0B160;
+    /**
+     * Frequency slot colours, from the two markers on Create's Redstone Link
+     * texture: red for the first slot, blue for the second.
+     */
+    private static final int[] FREQ_COLORS = { 0xFF97333B, 0xFF5371C6 };
+    private static final int[] FREQ_COLORS_HOVER = { 0xFFC4505A, 0xFF7E98E0 };
 
     private final BlockPos panelPos;
     private UUID selectedId;
@@ -67,8 +75,10 @@ public class PanelDesignerScreen extends Screen {
     private int freqLabelY;
     private int freqSlotY;
     private int optionsY;
-    /** Which frequency slot the inventory picker is open for; -1 = closed. */
-    private int pickingSlot = -1;
+    /** The frequency chooser is open; the designer hides behind it. */
+    private boolean choosing;
+    /** An inventory item being dragged in the chooser towards a frequency slot. */
+    private ItemStack carried = ItemStack.EMPTY;
 
     // Drag-to-move: the grab offset keeps the component under the cursor
     private UUID draggingId;
@@ -78,6 +88,7 @@ public class PanelDesignerScreen extends Screen {
     private float previewY;
     private boolean dragMoved;
 
+    private final List<Button> palette = new ArrayList<>();
     private final List<Button> selectionOnly = new ArrayList<>();
     private final List<Button> colorOnly = new ArrayList<>();
     private final List<Button> pulseOnly = new ArrayList<>();
@@ -121,6 +132,7 @@ public class PanelDesignerScreen extends Screen {
 
     @Override
     protected void init() {
+        palette.clear();
         selectionOnly.clear();
         colorOnly.clear();
         pulseOnly.clear();
@@ -138,10 +150,10 @@ public class PanelDesignerScreen extends Screen {
         int index = 0;
         for (PanelElementType<?> type : PanelElementType.all()) {
             String id = type.id();
-            addRenderableWidget(Button.builder(Component.translatable("gui.create_controlling.add." + id), b -> sendAdd(id))
+            palette.add(addRenderableWidget(Button.builder(Component.translatable("gui.create_controlling.add." + id), b -> sendAdd(id))
                     .bounds(paletteX + (index % 2) * 60, canvasY + (index / 2) * 16, 58, 14)
                     .tooltip(Tooltip.create(costTooltip(type)))
-                    .build());
+                    .build()));
             index++;
         }
 
@@ -311,6 +323,39 @@ public class PanelDesignerScreen extends Screen {
         send(tag);
     }
 
+    // --- JEI (compat/jei calls these; the screen itself never touches JEI) -----
+
+    /**
+     * What the screen occupies, so JEI's overlay keeps clear of it: the whole
+     * designer, or only the chooser while it is open. The designer hides then,
+     * which leaves JEI room for its item list at any GUI scale.
+     */
+    public Rect2i guiArea() {
+        if (choosing)
+            return new Rect2i(chooserX(), chooserY(), CHOOSER_WIDTH, CHOOSER_HEIGHT);
+        // the face and its shape controls, or the option buttons beside it if lower
+        int height = Math.max(CANVAS + 6 + 30, optionsY + 11 + 78 - canvasY);
+        return new Rect2i(canvasX - GAP - COLUMN, canvasY, COLUMN + GAP + CANVAS + GAP + COLUMN, height);
+    }
+
+    /**
+     * Where an item dragged from JEI sets frequency slot 0 or 1, or null: the
+     * slot in the chooser while it is open, else the slot in the designer.
+     */
+    public Rect2i frequencyDropArea(int slot) {
+        if (choosing)
+            return new Rect2i(chooserSlotX(slot), chooserY() + CHOOSER_SLOTS_Y, 18, 18);
+        PanelElement element = selected();
+        if (element == null || !hasFrequency(element))
+            return null;
+        return new Rect2i(sideX + slot * 22, freqSlotY, 18, 18);
+    }
+
+    /** Sets a frequency slot from an item dragged in from JEI. */
+    public void dropFrequency(int slot, ItemStack stack) {
+        sendFrequency(slot, stack);
+    }
+
     private void sendOption(String key, java.util.function.Consumer<CompoundTag> valueWriter) {
         if (selected() == null)
             return;
@@ -371,12 +416,44 @@ public class PanelDesignerScreen extends Screen {
 
     // --- Input ---------------------------------------------------------------------
 
-    private int pickerX() {
-        return width / 2 - 87;
+    // Frequency chooser: title row, the two slots, then the inventory (offsets from its corner)
+    private static final int CHOOSER_WIDTH = 174;
+    private static final int CHOOSER_HEIGHT = 124;
+    private static final int CHOOSER_SLOTS_Y = 20;
+    private static final int CHOOSER_CELLS_X = 6;
+    private static final int CHOOSER_CELLS_Y = 46;
+
+    private int chooserX() {
+        return width / 2 - CHOOSER_WIDTH / 2;
     }
 
-    private int pickerY() {
-        return height / 2 - 60;
+    private int chooserY() {
+        return height / 2 - CHOOSER_HEIGHT / 2;
+    }
+
+    private int chooserSlotX(int slot) {
+        return chooserX() + CHOOSER_WIDTH / 2 - 20 + slot * 22;
+    }
+
+    /** The chooser's frequency slot under the mouse, or -1. */
+    private int chooserSlotAt(double mouseX, double mouseY) {
+        int y = chooserY() + CHOOSER_SLOTS_Y;
+        for (int slot = 0; slot < 2; slot++) {
+            int x = chooserSlotX(slot);
+            if (mouseX >= x && mouseX < x + 18 && mouseY >= y && mouseY < y + 18)
+                return slot;
+        }
+        return -1;
+    }
+
+    private boolean overDoneButton(double mouseX, double mouseY) {
+        int ox = chooserX(), oy = chooserY();
+        return mouseX >= ox + CHOOSER_WIDTH - 42 && mouseX < ox + CHOOSER_WIDTH - 4 && mouseY >= oy + 4 && mouseY < oy + 18;
+    }
+
+    private void closeChooser() {
+        choosing = false;
+        carried = ItemStack.EMPTY;
     }
 
     private float faceX(double mouseX) {
@@ -393,8 +470,8 @@ public class PanelDesignerScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (pickingSlot >= 0) {
-            handlePickerClick(mouseX, mouseY);
+        if (choosing) {
+            handleChooserClick(mouseX, mouseY, button);
             return true;
         }
 
@@ -406,7 +483,7 @@ public class PanelDesignerScreen extends Screen {
                     if (button == 1)
                         sendFrequency(slot, ItemStack.EMPTY); // right-click clears
                     else
-                        pickingSlot = slot;
+                        choosing = true;
                     return true;
                 }
             }
@@ -434,7 +511,9 @@ public class PanelDesignerScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (button == 0 && draggingId != null && pickingSlot < 0) {
+        if (choosing)
+            return true; // a carried item just follows the mouse
+        if (button == 0 && draggingId != null) {
             PanelLayout layout = layout();
             PanelElement element = layout == null ? null : layout.elementById(draggingId).orElse(null);
             if (element != null) {
@@ -449,6 +528,14 @@ public class PanelDesignerScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (choosing) {
+            // dropping a carried item on a frequency slot sets it; anywhere else lets it go
+            int slot = chooserSlotAt(mouseX, mouseY);
+            if (button == 0 && slot >= 0 && !carried.isEmpty())
+                sendFrequency(slot, carried);
+            carried = ItemStack.EMPTY;
+            return true;
+        }
         if (button == 0 && draggingId != null) {
             PanelLayout layout = layout();
             PanelElement element = layout == null ? null : layout.elementById(draggingId).orElse(null);
@@ -463,31 +550,37 @@ public class PanelDesignerScreen extends Screen {
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
-    private void handlePickerClick(double mouseX, double mouseY) {
+    /**
+     * Chooser clicks: pick an inventory item up to drag it onto a slot,
+     * right-click a slot to clear it, Done or a click outside closes.
+     */
+    private void handleChooserClick(double mouseX, double mouseY, int button) {
         if (minecraft == null || minecraft.player == null) {
-            pickingSlot = -1;
+            closeChooser();
             return;
         }
-        int ox = pickerX();
-        int oy = pickerY();
-        if (mouseX >= ox + 174 - 42 && mouseX < ox + 174 - 4 && mouseY >= oy + 4 && mouseY < oy + 18) {
-            sendFrequency(pickingSlot, ItemStack.EMPTY);
-            pickingSlot = -1;
+        int ox = chooserX(), oy = chooserY();
+        if (overDoneButton(mouseX, mouseY)) {
+            closeChooser();
             return;
         }
-        int cellsX = ox + 6;
-        int cellsY = oy + 22;
+        int slot = chooserSlotAt(mouseX, mouseY);
+        if (slot >= 0) {
+            if (button == 1)
+                sendFrequency(slot, ItemStack.EMPTY);
+            return;
+        }
+        int cellsX = ox + CHOOSER_CELLS_X, cellsY = oy + CHOOSER_CELLS_Y;
         if (mouseX >= cellsX && mouseX < cellsX + 9 * 18 && mouseY >= cellsY && mouseY < cellsY + 4 * 18) {
             int column = (int) ((mouseX - cellsX) / 18);
             int row = (int) ((mouseY - cellsY) / 18);
             ItemStack stack = minecraft.player.getInventory().getItem(inventoryIndex(row, column));
-            if (!stack.isEmpty()) {
-                sendFrequency(pickingSlot, stack);
-                pickingSlot = -1;
-            }
+            if (button == 0 && !stack.isEmpty())
+                carried = stack.copyWithCount(1); // nothing leaves the inventory
             return;
         }
-        pickingSlot = -1; // click outside closes
+        if (mouseX < ox || mouseX >= ox + CHOOSER_WIDTH || mouseY < oy || mouseY >= oy + CHOOSER_HEIGHT)
+            closeChooser();
     }
 
     /** Display rows 0-2 = main inventory, row 3 = hotbar (standard layout). */
@@ -497,8 +590,8 @@ public class PanelDesignerScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (pickingSlot >= 0 && keyCode == 256) { // ESC closes the picker first
-            pickingSlot = -1;
+        if (choosing && keyCode == 256) { // ESC closes the chooser first
+            closeChooser();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -542,6 +635,14 @@ public class PanelDesignerScreen extends Screen {
         updateVisibility(panel, element);
 
         super.render(graphics, mouseX, mouseY, partialTick);
+        // the chooser stands alone: the designer hides while it is open
+        if (choosing) {
+            if (element == null || !hasFrequency(element))
+                closeChooser();
+            else
+                renderChooser(graphics, element, mouseX, mouseY);
+            return;
+        }
         graphics.drawString(font, title, canvasX, canvasY - 11, GOLD_TEXT);
         if (panel == null)
             return;
@@ -611,12 +712,10 @@ public class PanelDesignerScreen extends Screen {
             graphics.drawWordWrap(font, Component.translatable("gui.create_controlling.designer_hint"),
                     sideX, infoY, COLUMN - 2, 0x999999);
         }
-
-        if (pickingSlot >= 0)
-            renderPicker(graphics, mouseX, mouseY);
     }
 
     private void updateVisibility(PanelBlockEntity panel, PanelElement element) {
+        palette.forEach(w -> w.visible = true);
         boolean isLabel = element instanceof LabelElement;
         selectionOnly.forEach(w -> w.visible = element != null);
         colorOnly.forEach(w -> w.visible = element instanceof ColorableElement);
@@ -635,6 +734,12 @@ public class PanelDesignerScreen extends Screen {
         if (slopeButton != null && panel != null)
             slopeButton.setMessage(Component.translatable(wallReversed(panel)
                     ? "gui.create_controlling.raised_edge.bottom" : "gui.create_controlling.raised_edge.top"));
+        // while the chooser is open, nothing of the designer shows
+        if (choosing)
+            children().forEach(child -> {
+                if (child instanceof AbstractWidget widget)
+                    widget.visible = false;
+            });
     }
 
     private static String formatPx(float px) {
@@ -681,7 +786,7 @@ public class PanelDesignerScreen extends Screen {
         for (int slot = 0; slot < 2; slot++) {
             int x = sideX + slot * 22;
             boolean hovered = mouseX >= x && mouseX < x + 18 && mouseY >= freqSlotY && mouseY < freqSlotY + 18;
-            graphics.fill(x, freqSlotY, x + 18, freqSlotY + 18, hovered ? 0xFF8A6A3F : 0xFF3A332A);
+            graphics.fill(x, freqSlotY, x + 18, freqSlotY + 18, (hovered ? FREQ_COLORS_HOVER : FREQ_COLORS)[slot]);
             graphics.fill(x + 1, freqSlotY + 1, x + 17, freqSlotY + 17, 0xFF1E1913);
             ItemStack stack = slot == 0 ? element.frequency().first() : element.frequency().second();
             if (!stack.isEmpty())
@@ -691,36 +796,69 @@ public class PanelDesignerScreen extends Screen {
         }
     }
 
-    private void renderPicker(GuiGraphics graphics, int mouseX, int mouseY) {
+    /**
+     * The frequency chooser: the element's two slots, in their link colours,
+     * over the player's inventory. Items are dragged from the inventory (or
+     * from JEI) onto a slot; only the slots take them.
+     */
+    private void renderChooser(GuiGraphics graphics, PanelElement element, int mouseX, int mouseY) {
         if (minecraft == null || minecraft.player == null)
             return;
-        graphics.fill(0, 0, width, height, 0xA0000000);
-        int ox = pickerX();
-        int oy = pickerY();
-        graphics.fill(ox, oy, ox + 174, oy + 98, 0xF0201A12);
-        graphics.fill(ox + 1, oy + 1, ox + 173, oy + 97, 0xFF33291C);
+        int ox = chooserX(), oy = chooserY();
+        graphics.fill(ox, oy, ox + CHOOSER_WIDTH, oy + CHOOSER_HEIGHT, 0xF0201A12);
+        graphics.fill(ox + 1, oy + 1, ox + CHOOSER_WIDTH - 1, oy + CHOOSER_HEIGHT - 1, 0xFF33291C);
         graphics.drawString(font, Component.translatable("gui.create_controlling.pick_frequency"), ox + 6, oy + 7, GOLD_TEXT);
-        int clearX = ox + 174 - 42;
-        boolean clearHover = mouseX >= clearX && mouseX < ox + 170 && mouseY >= oy + 4 && mouseY < oy + 18;
-        graphics.fill(clearX, oy + 4, ox + 170, oy + 18, clearHover ? 0xFF8A6A3F : 0xFF4A3E2C);
-        graphics.drawCenteredString(font, Component.translatable("gui.create_controlling.clear"), clearX + 19, oy + 7, 0xFFFFFF);
+        int doneX = ox + CHOOSER_WIDTH - 42;
+        graphics.fill(doneX, oy + 4, ox + CHOOSER_WIDTH - 4, oy + 18,
+                overDoneButton(mouseX, mouseY) ? 0xFF8A6A3F : 0xFF4A3E2C);
+        graphics.drawCenteredString(font, Component.translatable("gui.create_controlling.done"), doneX + 19, oy + 7, 0xFFFFFF);
 
-        int cellsX = ox + 6;
-        int cellsY = oy + 22;
+        boolean dragging = !carried.isEmpty();
+        int hoveredSlot = chooserSlotAt(mouseX, mouseY);
+        for (int slot = 0; slot < 2; slot++) {
+            int x = chooserSlotX(slot), y = oy + CHOOSER_SLOTS_Y;
+            boolean lit = slot == hoveredSlot || dragging;
+            graphics.fill(x, y, x + 18, y + 18, (lit ? FREQ_COLORS_HOVER : FREQ_COLORS)[slot]);
+            graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF1E1913);
+            if (dragging && slot == hoveredSlot)
+                graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x40FFFFFF);
+            ItemStack stack = slot == 0 ? element.frequency().first() : element.frequency().second();
+            if (!stack.isEmpty())
+                graphics.renderItem(stack, x + 1, y + 1);
+        }
+
+        int cellsX = ox + CHOOSER_CELLS_X, cellsY = oy + CHOOSER_CELLS_Y;
+        ItemStack hoveredItem = ItemStack.EMPTY;
         for (int row = 0; row < 4; row++) {
             for (int column = 0; column < 9; column++) {
                 int x = cellsX + column * 18;
                 int y = cellsY + row * 18;
                 boolean hovered = mouseX >= x && mouseX < x + 18 && mouseY >= y && mouseY < y + 18;
-                graphics.fill(x, y, x + 18, y + 18, hovered ? 0xFF8A6A3F : 0xFF221C14);
+                graphics.fill(x, y, x + 18, y + 18, hovered && !dragging ? 0xFF5A4A33 : 0xFF221C14);
                 graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF15110C);
                 ItemStack stack = minecraft.player.getInventory().getItem(inventoryIndex(row, column));
                 if (!stack.isEmpty()) {
                     graphics.renderItem(stack, x + 1, y + 1);
                     if (hovered)
-                        graphics.renderTooltip(font, stack, mouseX, mouseY);
+                        hoveredItem = stack;
                 }
             }
+        }
+
+        if (dragging) {
+            // the carried item rides on the cursor, above everything else
+            graphics.pose().pushPose();
+            graphics.pose().translate(0, 0, 200);
+            graphics.renderItem(carried, mouseX - 8, mouseY - 8);
+            graphics.pose().popPose();
+        } else if (hoveredSlot >= 0) {
+            ItemStack stack = hoveredSlot == 0 ? element.frequency().first() : element.frequency().second();
+            if (stack.isEmpty())
+                graphics.renderTooltip(font, Component.translatable("gui.create_controlling.frequency_slot_hint"), mouseX, mouseY);
+            else
+                graphics.renderTooltip(font, stack, mouseX, mouseY);
+        } else if (!hoveredItem.isEmpty()) {
+            graphics.renderTooltip(font, hoveredItem, mouseX, mouseY);
         }
     }
 

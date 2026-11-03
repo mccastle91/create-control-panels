@@ -30,6 +30,7 @@ sourceSets.main {
 repositories {
     maven("https://maven.createmod.net") { name = "Create" }        // Create, Ponder, Flywheel
     maven("https://maven.ithundxr.dev/mirror") { name = "Registrate" }
+    maven("https://maven.blamejared.com") { name = "JEI" }
 }
 
 dependencies {
@@ -46,6 +47,10 @@ dependencies {
             prefer(property("deps.registrate") as String)
         }
     }
+    // JEI is optional: compile against its API, run the full mod in dev only
+    modCompileOnly("mezz.jei:jei-$mcVersion-common-api:${property("deps.jei")}")
+    modCompileOnly("mezz.jei:jei-$mcVersion-forge-api:${property("deps.jei")}")
+    modRuntimeOnly("mezz.jei:jei-$mcVersion-forge:${property("deps.jei")}")
     // Create's mixins need MixinExtras at runtime; its release jar bundles it
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("deps.mixinextras")}")!!)
     implementation("io.github.llamalad7:mixinextras-forge:${property("deps.mixinextras")}")

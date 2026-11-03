@@ -62,11 +62,16 @@ public abstract class AnalogElement extends PanelElement implements ColorableEle
         return changed;
     }
 
-    /** Moves one step towards {@code target}: the sneak-click fine adjustment. */
-    protected boolean stepTowards(int target) {
-        if (target == value)
-            return false;
-        return setValue(value + Integer.signum(target - value));
+    /** Click steps one forward; sneak-click steps one back. */
+    @Override
+    public boolean click(float localX, float localY, boolean sneaking) {
+        return setValue(value + (sneaking ? -1 : 1));
+    }
+
+    /** Sneak-clicking an analog control steps it back rather than opening the designer. */
+    @Override
+    public boolean takesSneakClicks() {
+        return true;
     }
 
     @Override

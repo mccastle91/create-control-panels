@@ -33,3 +33,6 @@ handoff/
 # Claude Code local state
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# CurseForge listing kit: kept locally, not published
+curseforge/

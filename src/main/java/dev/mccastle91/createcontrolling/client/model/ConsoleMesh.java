@@ -148,11 +148,14 @@ public final class ConsoleMesh {
         // centre
         facePlate(plate, 1, top + 1, 15, bottom - 1);
 
-        // edges: frame unless an identical neighbour continues the surface
+        // edges: frame unless an identical neighbour continues the surface. A
+        // horizontal frame strip owns its corners, so the vertical ones stop
+        // short of it rather than overlapping (coplanar quads z-fight)
         if (c.n()) facePlate(plate, 1, top, 15, top + 1); else faceFrameH(casing, 0, top, 16, top + 1);
         if (c.s()) facePlate(plate, 1, bottom - 1, 15, bottom); else faceFrameH(casing, 0, bottom - 1, 16, bottom);
-        if (c.w()) facePlate(plate, 0, top + 1, 1, bottom - 1); else faceFrameV(casing, 0, top, 1, bottom);
-        if (c.e()) facePlate(plate, 15, top + 1, 16, bottom - 1); else faceFrameV(casing, 15, top, 16, bottom);
+        float vTop = c.n() ? top : top + 1, vBottom = c.s() ? bottom : bottom - 1;
+        if (c.w()) facePlate(plate, 0, top + 1, 1, bottom - 1); else faceFrameV(casing, 0, vTop, 1, vBottom);
+        if (c.e()) facePlate(plate, 15, top + 1, 16, bottom - 1); else faceFrameV(casing, 15, vTop, 16, vBottom);
 
         // corners where both edges connect: plate if the diagonal is there too,
         // else one frame pixel — the inner corner of an L

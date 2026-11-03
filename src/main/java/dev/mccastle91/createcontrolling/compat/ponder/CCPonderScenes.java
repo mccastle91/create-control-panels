@@ -35,7 +35,7 @@ public class CCPonderScenes {
         scene.idle(110);
 
         scene.overlay().showText(80)
-                .text("Use the console to press buttons and flip switches; sneak-scroll on a knob or slider fine-tunes its value. Sneak-wrench to change the angle, or apply a Create casing to re-dress it")
+                .text("Use the console to press buttons and flip switches; click a knob or slider to step it up, sneak-click to step it down (sneak-scroll works too). Sneak-wrench to change the angle, or apply a Create casing to re-dress it")
                 .pointAt(util.vector().topOf(2, 1, 2))
                 .placeNearTarget();
         scene.idle(90);
