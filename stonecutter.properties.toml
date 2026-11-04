@@ -1,7 +1,7 @@
 mod.id = "create_controlling"
 mod.name = "Create Controlling"
 mod.group = "dev.mccastle91.createcontrolling"
-mod.version = "0.2.2"
+mod.version = "0.2.3"
 mod.authors = "mccastle91"
 mod.license = "MIT"
 
