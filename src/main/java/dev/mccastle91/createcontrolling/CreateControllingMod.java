@@ -66,6 +66,7 @@ public class CreateControllingMod {
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
+        event.enqueueWork(CCContent::commonSetup);
         CreateControlling.LOGGER.info("Setup complete. Create present: {}, Ponder present: {}",
                 ModList.get().isLoaded("create"), ModList.get().isLoaded("ponder"));
     }

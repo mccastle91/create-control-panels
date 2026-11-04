@@ -4,14 +4,17 @@ import dev.mccastle91.createcontrolling.panel.element.BarMeterElement;
 import dev.mccastle91.createcontrolling.panel.element.ButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.KnobElement;
 import dev.mccastle91.createcontrolling.panel.element.LabelElement;
+import dev.mccastle91.createcontrolling.panel.element.NixieStripElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElements;
+import dev.mccastle91.createcontrolling.panel.element.ReadoutElement;
 import dev.mccastle91.createcontrolling.registry.CCContent;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -394,5 +397,124 @@ class PanelEditOpsTest {
         move.putFloat("Y", 1);
         assertFalse(apply(panel, move));
         assertFalse(apply(panel, add("hologram_from_the_future", 1, 1)));
+    }
+
+    private static CompoundTag readoutOption(PanelElement element, String key, int value) {
+        CompoundTag tag = op(PanelEditOps.OP_SET_OPTION, element.id());
+        tag.putString("Key", key);
+        tag.putInt("Value", value);
+        return tag;
+    }
+
+    private static CompoundTag line(PanelElement element, int row, int line) {
+        CompoundTag tag = readoutOption(element, "line", line);
+        tag.putInt("Row", row);
+        return tag;
+    }
+
+    @Test
+    void newReadoutsTakeTheirOwnLines() {
+        PanelBlockEntity panel = newPanel();
+        assertTrue(apply(panel, add("display_board", 1, 1)));
+        assertTrue(apply(panel, add("nixie_strip", 1, 8)));
+        ReadoutElement board = (ReadoutElement) panel.getLayout().elements().get(0);
+        ReadoutElement strip = (ReadoutElement) panel.getLayout().elements().get(1);
+        assertEquals(1, board.line(0));
+        assertEquals(2, board.line(1));
+        assertEquals(3, strip.line(0));
+        assertEquals(3, panel.getLayout().lineCount());
+    }
+
+    @Test
+    void readoutRowsChooseTheirLines() {
+        PanelBlockEntity panel = newPanel();
+        assertTrue(apply(panel, add("display_board", 1, 1)));
+        assertTrue(apply(panel, add("nixie_strip", 1, 8)));
+        ReadoutElement board = (ReadoutElement) panel.getLayout().elements().get(0);
+        ReadoutElement strip = (ReadoutElement) panel.getLayout().elements().get(1);
+
+        assertTrue(apply(panel, line(board, 1, 6)));
+        assertEquals(6, board.line(1));
+        assertEquals(6, panel.getLayout().lineCount(), "offers lines up to the highest shown");
+
+        assertTrue(apply(panel, line(board, 1, ReadoutElement.NO_LINE)));
+        assertEquals(ReadoutElement.NO_LINE, board.line(1), "a board row can be left off");
+        assertTrue(apply(panel, line(strip, 0, ReadoutElement.NO_LINE)));
+        assertEquals(1, strip.line(0), "a strip's only row can't be");
+
+        assertTrue(apply(panel, line(strip, 0, 99)));
+        assertEquals(ReadoutElement.MAX_LINES, strip.line(0));
+
+        PanelLayout loaded = PanelLayout.load(panel.getLayout().save(registries), registries);
+        assertEquals(ReadoutElement.NO_LINE, ((ReadoutElement) loaded.elementById(board.id()).orElseThrow()).line(1));
+        assertEquals(ReadoutElement.MAX_LINES, ((ReadoutElement) loaded.elementById(strip.id()).orElseThrow()).line(0));
+    }
+
+    @Test
+    void displayBoardsSpanTheFaceWithinTwoPixels() {
+        PanelBlockEntity panel = newPanel();
+        assertTrue(apply(panel, add("display_board", 2, 1)));
+        ReadoutElement board = (ReadoutElement) panel.getLayout().elements().get(0);
+        assertEquals(12, board.width(), "1 px short of the design area on each side");
+        assertEquals(2, board.x());
+
+        assertTrue(apply(panel, readoutOption(board, "size", 99)));
+        assertEquals(14, board.width(), "up to the design area's full width");
+        assertEquals(PanelElement.AREA_MIN, board.x(), "grows about its centre");
+        assertTrue(apply(panel, readoutOption(board, "size", 1)));
+        assertEquals(12, board.width());
+        assertEquals(2, board.x(), "and shrinks back to even margins");
+        assertEquals(2, board.rows());
+    }
+
+    @Test
+    void nixieStripsAreSizedInTubes() {
+        PanelBlockEntity panel = newPanel();
+        assertTrue(apply(panel, add("nixie_strip", 1, 1)));
+        assertTrue(apply(panel, add("button", 12, 1)));
+        ReadoutElement strip = (ReadoutElement) panel.getLayout().elements().get(0);
+        assertEquals(NixieStripElement.DEFAULT_TUBES, strip.size());
+        assertEquals(10.5f, strip.width());
+
+        assertFalse(apply(panel, readoutOption(strip, "size", 5)), "would run into the button");
+        assertEquals(10.5f, strip.width());
+        assertTrue(apply(panel, readoutOption(strip, "size", 2)));
+        assertEquals(5.5f, strip.width());
+    }
+
+    @Test
+    void nixieTubesFitTheirText() {
+        assertEquals(" 230V", NixieStripElement.fit(" 229.871 V", 5), "decimals round away first");
+        assertEquals("229.9", NixieStripElement.fit("229.87", 5));
+        assertEquals("1.5kV", NixieStripElement.fit("1.5 kV", 5));
+        assertEquals("  7", NixieStripElement.fit("7", 3), "short text sits right");
+        assertEquals("1500", NixieStripElement.fit("1500 V", 4), "then the unit goes");
+        assertEquals(" 1501V", NixieStripElement.fit("1,500.5 V", 6), "thousands commas aren't kept");
+        assertEquals("----", NixieStripElement.fit("12345 V", 4), "never a wrong number");
+        assertEquals("-3.3", NixieStripElement.fit("-3.25", 4));
+        assertEquals(">200V", NixieStripElement.fit("> 200.4 V", 5));
+        assertEquals("IronI", NixieStripElement.fit("Iron Ingot", 5), "words are cut off");
+        assertEquals("12:30", NixieStripElement.fit("12:30:05", 5), "digits after the number: not a unit");
+    }
+
+    @Test
+    void displayLinesSyncToClientsButAreNeverSaved() {
+        PanelBlockEntity panel = newPanel();
+        assertTrue(panel.setDisplayLine(2, Component.literal("230 V")));
+        assertFalse(panel.setDisplayLine(2, Component.literal("230 V")), "same text: nothing to sync");
+
+        CompoundTag update = panel.getUpdateTag(registries);
+        assertTrue(update.contains(PanelBlockEntity.TAG_DISPLAY_LINES));
+        assertFalse(panel.saveWithoutMetadata(registries).contains(PanelBlockEntity.TAG_DISPLAY_LINES));
+
+        PanelBlockEntity client = newPanel();
+        client.loadAdditional(update, registries);
+        assertEquals("230 V", client.displayLine(2).getString());
+        assertEquals("", client.displayLine(1).getString());
+
+        assertTrue(panel.setDisplayLine(2, Component.empty()));
+        assertFalse(panel.setDisplayLine(2, Component.empty()), "already blank");
+        client.loadAdditional(panel.getUpdateTag(registries), registries);
+        assertEquals("", client.displayLine(2).getString(), "a cleared line clears on clients too");
     }
 }

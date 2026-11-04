@@ -5,6 +5,7 @@ import dev.mccastle91.createcontrolling.config.CCConfig;
 import dev.mccastle91.createcontrolling.panel.element.LabelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElementType;
+import dev.mccastle91.createcontrolling.panel.element.ReadoutElement;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -14,6 +15,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /**
@@ -117,6 +120,22 @@ public class PanelLayout {
                 return false;
         }
         return true;
+    }
+
+    /** Every line number some readout shows. */
+    public Set<Integer> readoutLines() {
+        Set<Integer> lines = new TreeSet<>();
+        for (PanelElement element : elements)
+            if (element instanceof ReadoutElement readout)
+                for (int row = 0; row < readout.rows(); row++)
+                    if (readout.line(row) != ReadoutElement.NO_LINE)
+                        lines.add(readout.line(row));
+        return lines;
+    }
+
+    /** How many lines the console offers a Display Link: up to the highest one shown. */
+    public int lineCount() {
+        return readoutLines().stream().max(Integer::compare).orElse(0);
     }
 
     public List<PanelElement> elements() {

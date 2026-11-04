@@ -1,11 +1,15 @@
 package dev.mccastle91.createcontrolling.gametest;
 
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.api.behaviour.display.DisplayTarget;
+import com.simibubi.create.content.redstone.displayLink.DisplayLinkBlockEntity;
+import com.simibubi.create.content.redstone.displayLink.DisplayLinkContext;
 import com.simibubi.create.content.redstone.link.LinkBehaviour;
 import com.simibubi.create.content.redstone.link.RedstoneLinkBlock;
 import com.simibubi.create.content.redstone.link.RedstoneLinkBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import dev.mccastle91.createcontrolling.CreateControlling;
+import dev.mccastle91.createcontrolling.compat.create.ConsoleDisplayTarget;
 import dev.mccastle91.createcontrolling.registry.CCContent;
 import dev.mccastle91.createcontrolling.panel.ConsoleShape;
 import dev.mccastle91.createcontrolling.panel.FrequencyPair;
@@ -15,11 +19,14 @@ import dev.mccastle91.createcontrolling.panel.CostPayer;
 import dev.mccastle91.createcontrolling.panel.PanelEditOps;
 import dev.mccastle91.createcontrolling.panel.PanelFaceGeometry;
 import dev.mccastle91.createcontrolling.panel.element.ButtonElement;
+import dev.mccastle91.createcontrolling.panel.element.DisplayBoardElement;
 import dev.mccastle91.createcontrolling.panel.element.KnobElement;
 import dev.mccastle91.createcontrolling.panel.element.LampElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElements;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -33,6 +40,9 @@ import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.ItemLike;
+
+import java.util.List;
+
 //? if neoforge {
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -229,6 +239,57 @@ public class PanelLinkGameTests {
     }
 
     // --- helpers -----------------------------------------------------------
+
+    /** Real Display Links writing through the target Create finds for a console. */
+    @GameTest(template = EMPTY)
+    public void displayLinksFillConsoleLines(GameTestHelper helper) {
+        DisplayBoardElement board = PanelElements.DISPLAY_BOARD.create();
+        board.setLine(0, 1);
+        board.setLine(1, 2);
+        PanelBlockEntity panel = placePanelWith(helper, board);
+        DisplayLinkContext first = displayLinkContext(helper, LINK_POS);
+        DisplayLinkContext second = displayLinkContext(helper, LINK_POS.east());
+        BlockPos target = helper.absolutePos(PANEL_POS);
+
+        DisplayTarget display = DisplayTarget.get(helper.getLevel(), target);
+        if (!(display instanceof ConsoleDisplayTarget))
+            throw new GameTestAssertException("Consoles should be display targets, found " + display);
+        if (display.provideStats(first).maxRows() != 2)
+            throw new GameTestAssertException("Board shows two lines, stats say " + display.provideStats(first));
+
+        display.acceptText(0, text("230 V", "Grid OK", "no third line"), first);
+        assertDisplayLine(panel, 1, "230 V");
+        assertDisplayLine(panel, 2, "Grid OK");
+        assertDisplayLine(panel, 3, "");
+
+        display.acceptText(0, text("231 V"), first);
+        assertDisplayLine(panel, 1, "231 V");
+        assertDisplayLine(panel, 2, "");
+
+        display.acceptText(1, text("Mine"), second);
+        display.acceptText(0, text("232 V", "Pushed in"), first);
+        assertDisplayLine(panel, 1, "232 V");
+        assertDisplayLine(panel, 2, "Mine");
+        helper.succeed();
+    }
+
+    private static DisplayLinkContext displayLinkContext(GameTestHelper helper, BlockPos pos) {
+        helper.setBlock(pos, AllBlocks.DISPLAY_LINK.getDefaultState());
+        if (!(helper.getBlockEntity(pos) instanceof DisplayLinkBlockEntity link))
+            throw new GameTestAssertException("Display link block entity missing");
+        link.target(helper.absolutePos(PANEL_POS));
+        return new DisplayLinkContext(helper.getLevel(), link);
+    }
+
+    private static List<MutableComponent> text(String... lines) {
+        return java.util.Arrays.stream(lines).map(Component::literal).toList();
+    }
+
+    private static void assertDisplayLine(PanelBlockEntity panel, int line, String expected) {
+        String shown = panel.displayLine(line).getString();
+        if (!shown.equals(expected))
+            throw new GameTestAssertException("Line " + line + " should show '" + expected + "', shows '" + shown + "'");
+    }
 
     /**
      * Each test uses a distinct pair: tests run in parallel in one world and

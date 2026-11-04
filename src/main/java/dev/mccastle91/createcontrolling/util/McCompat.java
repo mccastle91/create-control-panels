@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.DyeColor;
@@ -43,6 +44,23 @@ public final class McCompat {
         //?} else {
         /*return ItemStack.of(tag);
         *///?}
+    }
+
+    public static String componentToJson(Component text, @Nullable HolderLookup.Provider registries) {
+        //? if >=1.21 {
+        return Component.Serializer.toJson(text, registries);
+        //?} else {
+        /*return Component.Serializer.toJson(text);
+        *///?}
+    }
+
+    public static Component componentFromJson(String json, @Nullable HolderLookup.Provider registries) {
+        //? if >=1.21 {
+        Component text = Component.Serializer.fromJson(json, registries);
+        //?} else {
+        /*Component text = Component.Serializer.fromJson(json);
+        *///?}
+        return text == null ? Component.empty() : text;
     }
 
     /** Opaque ARGB tint of a dye. */

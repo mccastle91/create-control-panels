@@ -10,10 +10,14 @@ import dev.mccastle91.createcontrolling.panel.element.BarMeterElement;
 import dev.mccastle91.createcontrolling.panel.element.ButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.ColorableElement;
 import dev.mccastle91.createcontrolling.panel.element.CoveredSwitchElement;
+import dev.mccastle91.createcontrolling.panel.element.DisplayBoardElement;
 import dev.mccastle91.createcontrolling.panel.element.LabelElement;
 import dev.mccastle91.createcontrolling.panel.element.LatchingButtonElement;
+import dev.mccastle91.createcontrolling.panel.element.NixieStripElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElementType;
+import dev.mccastle91.createcontrolling.panel.element.PanelElements;
+import dev.mccastle91.createcontrolling.panel.element.ReadoutElement;
 import dev.mccastle91.createcontrolling.panel.element.ReceiverElement;
 import dev.mccastle91.createcontrolling.panel.element.SwitchElement;
 import dev.mccastle91.createcontrolling.util.McCompat;
@@ -75,10 +79,19 @@ public class PanelDesignerScreen extends Screen {
     private int freqLabelY;
     private int freqSlotY;
     private int optionsY;
+    private int lineRowY;
     /** The frequency chooser is open; the designer hides behind it. */
     private boolean choosing;
     /** An inventory item being dragged in the chooser towards a frequency slot. */
     private ItemStack carried = ItemStack.EMPTY;
+
+    /** What the colour picker sets: a component's colour or a label's text. */
+    private enum ColorTarget { COMPONENT, TEXT }
+
+    /** The open colour picker's target, or null when it is closed. */
+    private ColorTarget colorTarget;
+    private int colorPickerX;
+    private int colorPickerY;
 
     // Drag-to-move: the grab offset keeps the component under the cursor
     private UUID draggingId;
@@ -94,6 +107,9 @@ public class PanelDesignerScreen extends Screen {
     private final List<Button> pulseOnly = new ArrayList<>();
     private final List<Button> labelOnly = new ArrayList<>();
     private final List<Button> barOnly = new ArrayList<>();
+    private final List<Button> readoutOnly = new ArrayList<>();
+    private final List<Button> boardOnly = new ArrayList<>();
+    private final List<Button> stripOnly = new ArrayList<>();
     private EditBox labelTextBox;
     private AngleSlider angleSlider;
     /** Wall consoles only: which edge stands out from the wall. */
@@ -138,6 +154,9 @@ public class PanelDesignerScreen extends Screen {
         pulseOnly.clear();
         labelOnly.clear();
         barOnly.clear();
+        readoutOnly.clear();
+        boardOnly.clear();
+        stripOnly.clear();
         shapeOnly.clear();
 
         int total = COLUMN + GAP + CANVAS + GAP + COLUMN;
@@ -150,7 +169,9 @@ public class PanelDesignerScreen extends Screen {
         int index = 0;
         for (PanelElementType<?> type : PanelElementType.all()) {
             String id = type.id();
-            palette.add(addRenderableWidget(Button.builder(Component.translatable("gui.create_controlling.add." + id), b -> sendAdd(id))
+            // a board is nearly as wide as the face: it starts centred, with even margins
+            float addX = type == PanelElements.DISPLAY_BOARD ? (PanelElement.FACE_SIZE - type.width()) / 2 : 6;
+            palette.add(addRenderableWidget(Button.builder(Component.translatable("gui.create_controlling.add." + id), b -> sendAdd(id, addX))
                     .bounds(paletteX + (index % 2) * 60, canvasY + (index / 2) * 16, 58, 14)
                     .tooltip(Tooltip.create(costTooltip(type)))
                     .build()));
@@ -190,7 +211,8 @@ public class PanelDesignerScreen extends Screen {
         y += 11;
 
         colorOnly.add(addRenderableWidget(Button.builder(
-                        Component.translatable("gui.create_controlling.color"), b -> cycleColor())
+                        Component.translatable("gui.create_controlling.color"),
+                        b -> openColorPicker(ColorTarget.COMPONENT, b))
                 .bounds(sideX, y, 58, 14).build()));
         pulseOnly.add(addRenderableWidget(Button.builder(Component.literal("Pulse -"), b -> adjustPulse(-5))
                 .bounds(sideX, y + 16, 58, 14).build()));
@@ -199,6 +221,19 @@ public class PanelDesignerScreen extends Screen {
         barOnly.add(addRenderableWidget(Button.builder(Component.literal("Length -"), b -> adjustBarLength(-1))
                 .bounds(sideX, y + 16, 58, 14).build()));
         barOnly.add(addRenderableWidget(Button.builder(Component.literal("Length +"), b -> adjustBarLength(1))
+                .bounds(sideX + 60, y + 16, 58, 14).build()));
+
+        // Readouts: which line each row shows, between its - and + buttons, then the size
+        lineRowY = y;
+        lineButtons(readoutOnly, 0, y);
+        lineButtons(boardOnly, 1, y + 16);
+        boardOnly.add(addRenderableWidget(Button.builder(Component.literal("Width -"), b -> adjustReadoutSize(-1))
+                .bounds(sideX, y + 32, 58, 14).build()));
+        boardOnly.add(addRenderableWidget(Button.builder(Component.literal("Width +"), b -> adjustReadoutSize(1))
+                .bounds(sideX + 60, y + 32, 58, 14).build()));
+        stripOnly.add(addRenderableWidget(Button.builder(Component.literal("Tubes -"), b -> adjustReadoutSize(-1))
+                .bounds(sideX, y + 16, 58, 14).build()));
+        stripOnly.add(addRenderableWidget(Button.builder(Component.literal("Tubes +"), b -> adjustReadoutSize(1))
                 .bounds(sideX + 60, y + 16, 58, 14).build()));
 
         labelTextBox = new EditBox(font, sideX, y, COLUMN - 2, 14, Component.empty());
@@ -219,8 +254,16 @@ public class PanelDesignerScreen extends Screen {
         labelOnly.add(addRenderableWidget(Button.builder(Component.literal("Width +"), b -> adjustLabelWidth(1))
                 .bounds(sideX + 60, y + 48, 58, 14).build()));
         labelOnly.add(addRenderableWidget(Button.builder(
-                        Component.translatable("gui.create_controlling.text_color"), b -> cycleTextColor())
+                        Component.translatable("gui.create_controlling.text_color"),
+                        b -> openColorPicker(ColorTarget.TEXT, b))
                 .bounds(sideX, y + 64, COLUMN - 2, 14).build()));
+    }
+
+    private void lineButtons(List<Button> group, int row, int y) {
+        group.add(addRenderableWidget(Button.builder(Component.literal("-"), b -> adjustLine(row, -1))
+                .bounds(sideX, y, 14, 14).build()));
+        group.add(addRenderableWidget(Button.builder(Component.literal("+"), b -> adjustLine(row, 1))
+                .bounds(sideX + COLUMN - 16, y, 14, 14).build()));
     }
 
     private static Component costTooltip(PanelElementType<?> type) {
@@ -249,11 +292,11 @@ public class PanelDesignerScreen extends Screen {
         return tag;
     }
 
-    private void sendAdd(String typeId) {
+    private void sendAdd(String typeId, float x) {
         CompoundTag tag = new CompoundTag();
         tag.putString(PanelEditOps.KEY_OP, PanelEditOps.OP_ADD);
         tag.putString("Type", typeId);
-        tag.putFloat("X", 6);
+        tag.putFloat("X", x);
         tag.putFloat("Y", 6);
         send(tag);
     }
@@ -375,11 +418,74 @@ public class PanelDesignerScreen extends Screen {
             sendOption("length", tag -> tag.putFloat("Value", bar.width() + delta));
     }
 
-    private void cycleColor() {
-        if (selected() instanceof ColorableElement colorable) {
-            DyeColor next = DyeColor.byId((colorable.color().getId() + 1) % 16);
-            sendOption("color", tag -> tag.putString("Value", next.getName()));
+    private void adjustLine(int row, int delta) {
+        if (selected() instanceof ReadoutElement readout)
+            sendOption("line", tag -> {
+                tag.putInt("Row", row);
+                tag.putInt("Value", readout.line(row) + delta);
+            });
+    }
+
+    private void adjustReadoutSize(int delta) {
+        if (selected() instanceof ReadoutElement readout)
+            sendOption("size", tag -> tag.putInt("Value", readout.size() + delta));
+    }
+
+    // --- Colour picker: a 4x4 grid of the dye colours under the button that opened it ---
+
+    private static final int SWATCH = 16;
+    private static final int SWATCH_STEP = 18;
+    private static final int PICKER_PAD = 4;
+    private static final int PICKER_SIZE = PICKER_PAD * 2 + 4 * SWATCH_STEP - (SWATCH_STEP - SWATCH);
+
+    private void openColorPicker(ColorTarget target, Button button) {
+        colorTarget = target;
+        colorPickerX = button.getX();
+        colorPickerY = button.getY() + button.getHeight() + 2;
+        if (colorPickerY + PICKER_SIZE > height) // no room below: open above the button
+            colorPickerY = button.getY() - 2 - PICKER_SIZE;
+    }
+
+    /** The colour picker still applies to the selection: right target, still selected. */
+    private boolean colorPickerApplies(PanelElement element) {
+        return colorTarget == ColorTarget.COMPONENT ? element instanceof ColorableElement
+                : colorTarget == ColorTarget.TEXT && element instanceof LabelElement;
+    }
+
+    /** The dye under the mouse in the colour picker, or null. */
+    private DyeColor swatchAt(double mouseX, double mouseY) {
+        double gx = mouseX - colorPickerX - PICKER_PAD, gy = mouseY - colorPickerY - PICKER_PAD;
+        if (gx < 0 || gy < 0)
+            return null;
+        int column = (int) (gx / SWATCH_STEP), row = (int) (gy / SWATCH_STEP);
+        if (column > 3 || row > 3 || gx - column * SWATCH_STEP >= SWATCH || gy - row * SWATCH_STEP >= SWATCH)
+            return null;
+        return DyeColor.byId(row * 4 + column);
+    }
+
+    /** The swatch colour: dye colour for components, the dye's text colour for labels. */
+    private int swatchRgb(DyeColor dye) {
+        return colorTarget == ColorTarget.TEXT ? dye.getTextColor() & 0xFFFFFF : McCompat.dyeRgb(dye);
+    }
+
+    private boolean isCurrentColor(PanelElement element, DyeColor dye) {
+        if (colorTarget == ColorTarget.TEXT && element instanceof LabelElement label)
+            return (dye.getTextColor() & 0xFFFFFF) == label.color();
+        return element instanceof ColorableElement colorable && colorable.color() == dye;
+    }
+
+    /** A click in the picker: a swatch sets the colour and closes it; anywhere else just closes it. */
+    private void handleColorPickerClick(double mouseX, double mouseY) {
+        DyeColor dye = swatchAt(mouseX, mouseY);
+        if (dye != null) {
+            if (colorTarget == ColorTarget.TEXT) {
+                int rgb = dye.getTextColor() & 0xFFFFFF;
+                sendOption("text_color", tag -> tag.putInt("Value", rgb));
+            } else {
+                sendOption("color", tag -> tag.putString("Value", dye.getName()));
+            }
         }
+        colorTarget = null;
     }
 
     private void adjustScale(int delta) {
@@ -390,20 +496,6 @@ public class PanelDesignerScreen extends Screen {
     private void adjustLabelWidth(float delta) {
         if (selected() instanceof LabelElement label)
             sendOption("width", tag -> tag.putFloat("Value", label.width() + delta));
-    }
-
-    private void cycleTextColor() {
-        if (selected() instanceof LabelElement label) {
-            DyeColor[] values = DyeColor.values();
-            int nextIndex = 0;
-            for (int i = 0; i < values.length; i++)
-                if ((values[i].getTextColor() & 0xFFFFFF) == label.color()) {
-                    nextIndex = i + 1;
-                    break;
-                }
-            int color = values[nextIndex % values.length].getTextColor() & 0xFFFFFF;
-            sendOption("text_color", tag -> tag.putInt("Value", color));
-        }
     }
 
     private void cycleAlignment() {
@@ -470,6 +562,10 @@ public class PanelDesignerScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (colorTarget != null) {
+            handleColorPickerClick(mouseX, mouseY);
+            return true;
+        }
         if (choosing) {
             handleChooserClick(mouseX, mouseY, button);
             return true;
@@ -511,8 +607,8 @@ public class PanelDesignerScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (choosing)
-            return true; // a carried item just follows the mouse
+        if (choosing || colorTarget != null)
+            return true; // a carried item just follows the mouse; the picker takes no drags
         if (button == 0 && draggingId != null) {
             PanelLayout layout = layout();
             PanelElement element = layout == null ? null : layout.elementById(draggingId).orElse(null);
@@ -590,6 +686,10 @@ public class PanelDesignerScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (colorTarget != null && keyCode == 256) { // ESC closes the colour picker first
+            colorTarget = null;
+            return true;
+        }
         if (choosing && keyCode == 256) { // ESC closes the chooser first
             closeChooser();
             return true;
@@ -618,6 +718,10 @@ public class PanelDesignerScreen extends Screen {
             return argb(colorable.color(), active ? 1.0f : 0.6f);
         if (element instanceof ReceiverElement)
             return active ? 0xFFB08850 : 0xFF6E5A3C; // brass-housed gauges
+        if (element instanceof DisplayBoardElement)
+            return 0xFF2B2B2D;
+        if (element instanceof NixieStripElement)
+            return 0xFF6E5A3C;
         return 0xFF5A5A60;
     }
 
@@ -705,13 +809,58 @@ public class PanelDesignerScreen extends Screen {
                         sideX, freqLabelY, GOLD_TEXT);
                 renderFrequencySlots(graphics, element, mouseX, mouseY);
             }
-            if (element instanceof ColorableElement || element instanceof LabelElement)
+            if (element instanceof ColorableElement || element instanceof LabelElement
+                    || element instanceof ReadoutElement)
                 graphics.drawString(font, Component.translatable("gui.create_controlling.options"),
                         sideX, optionsY, GOLD_TEXT);
+            if (element instanceof ReadoutElement readout)
+                for (int row = 0; row < readout.rows(); row++)
+                    graphics.drawCenteredString(font, rowLabel(readout, row), sideX + (COLUMN - 2) / 2,
+                            lineRowY + row * 16 + 3, 0xFFFFFF);
         } else {
             graphics.drawWordWrap(font, Component.translatable("gui.create_controlling.designer_hint"),
                     sideX, infoY, COLUMN - 2, 0x999999);
         }
+
+        if (colorTarget != null) {
+            if (colorPickerApplies(element))
+                renderColorPicker(graphics, element, mouseX, mouseY);
+            else
+                colorTarget = null;
+        }
+    }
+
+    /** "Line 2", or on a board "Top: Line 2" / "Bottom: Off". */
+    private static Component rowLabel(ReadoutElement readout, int row) {
+        Component line = lineName(readout.line(row));
+        if (readout.rows() == 1)
+            return line;
+        return Component.translatable(row == 0 ? "gui.create_controlling.row_top" : "gui.create_controlling.row_bottom", line);
+    }
+
+    private static Component lineName(int line) {
+        return line == ReadoutElement.NO_LINE ? Component.translatable("gui.create_controlling.line_off")
+                : Component.translatable("gui.create_controlling.line", line);
+    }
+
+    /** The 16 dye colours as swatches, drawn above everything else on the screen. */
+    private void renderColorPicker(GuiGraphics graphics, PanelElement element, int mouseX, int mouseY) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 400);
+        int x0 = colorPickerX, y0 = colorPickerY;
+        graphics.fill(x0, y0, x0 + PICKER_SIZE, y0 + PICKER_SIZE, 0xF0201A12);
+        graphics.fill(x0 + 1, y0 + 1, x0 + PICKER_SIZE - 1, y0 + PICKER_SIZE - 1, 0xFF33291C);
+        DyeColor hovered = swatchAt(mouseX, mouseY);
+        for (DyeColor dye : DyeColor.values()) {
+            int x = x0 + PICKER_PAD + (dye.getId() % 4) * SWATCH_STEP;
+            int y = y0 + PICKER_PAD + (dye.getId() / 4) * SWATCH_STEP;
+            boolean current = isCurrentColor(element, dye);
+            graphics.fill(x, y, x + SWATCH, y + SWATCH, current || dye == hovered ? 0xFFFFFFFF : 0xFF15110C);
+            graphics.fill(x + 1, y + 1, x + SWATCH - 1, y + SWATCH - 1, 0xFF000000 | swatchRgb(dye));
+            if (current) // a second ring so the current colour stands out from a hovered one
+                frame(graphics, x + 1, y + 1, x + SWATCH - 1, y + SWATCH - 1, 0xFF15110C);
+        }
+        graphics.pose().popPose();
     }
 
     private void updateVisibility(PanelBlockEntity panel, PanelElement element) {
@@ -722,6 +871,9 @@ public class PanelDesignerScreen extends Screen {
         pulseOnly.forEach(w -> w.visible = element instanceof ButtonElement);
         labelOnly.forEach(w -> w.visible = isLabel);
         barOnly.forEach(w -> w.visible = element instanceof BarMeterElement);
+        readoutOnly.forEach(w -> w.visible = element instanceof ReadoutElement);
+        boardOnly.forEach(w -> w.visible = element instanceof DisplayBoardElement);
+        stripOnly.forEach(w -> w.visible = element instanceof NixieStripElement);
         if (labelTextBox != null)
             labelTextBox.visible = isLabel;
         boolean shapeable = panel != null;
@@ -761,6 +913,11 @@ public class PanelDesignerScreen extends Screen {
             graphics.fill(cx - 2, cy - 2, cx + 2, cy + 2, 0xFFFFFFFF);
         } else if (e instanceof ReceiverElement receiver) {
             graphics.drawCenteredString(font, Integer.toString(receiver.displayStrength()), cx, cy - 4, 0xFFFFFF);
+        } else if (e instanceof ReadoutElement readout) {
+            int rowHeight = (y1 - y0) / readout.rows();
+            for (int row = 0; row < readout.rows(); row++)
+                graphics.drawCenteredString(font, lineName(readout.line(row)), cx,
+                        y0 + row * rowHeight + (rowHeight - 8) / 2, 0xFFFFFF);
         }
     }
 

@@ -84,6 +84,8 @@ public final class ComponentCosts {
         cost(PanelElements.NEEDLE_METER, "create:speedometer", 1);
         cost(PanelElements.BAR_METER, "create:speedometer", 1);
         cost(PanelElements.NIXIE, "create:nixie_tube", 1);
+        cost(PanelElements.NIXIE_STRIP, "create:nixie_tube", 2);
+        cost(PanelElements.DISPLAY_BOARD, "create:display_board", 1);
         cost(PanelElements.LABEL, ANY_DYE, 1);
     }
 

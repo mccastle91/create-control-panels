@@ -46,6 +46,8 @@ Wrench: sneak-use cycles the angle presets; on a wall it runs 15/30/45° with th
 | needle_meter | 6×5 | in, needle | — |
 | bar_meter | 3–14 × 2 (length set per meter, default 6) | in, bar | — |
 | nixie | 6×4 | in, two nixie digits 0–15 | — |
+| nixie_strip | 5.5–13 × 4 (2–5 tubes, default 4) | Display Link, one line | — |
+| display_board | 12–14 × 6 (default 12, centred) | Display Link, two rows, each its own line or off | — |
 | label | text-sized | — | — (passes clicks through) |
 
 Costs (lines name an item or an item tag; an item that doesn't resolve makes that line free):
@@ -62,6 +64,8 @@ Costs (lines name an item or an item tag; an item that doesn't resolve makes tha
 | large_lamp | 2 redstone lamps |
 | needle_meter, bar_meter | Create speedometer |
 | nixie | Create nixie tube |
+| nixie_strip | 2 Create nixie tubes |
+| display_board | Create display board |
 | label | any dye (`c:dyes` on NeoForge, `forge:dyes` on Forge) |
 
 Each component records the exact stacks paid for it; removing it refunds those (so a part mounted in creative refunds nothing). A blueprint paste reuses the old components' paid items for the new ones, charges only the shortfall and refunds the rest.
@@ -69,7 +73,7 @@ Each component records the exact stacks paid for it; removing it refunds those (
 ## Rendering
 
 - **Body:** one blockstate variant pointing at a placeholder JSON model (particle texture, item transforms, render type). At bake time (`ModelEvent.ModifyBakingResult`, same shape on Forge 1.20.1 and NeoForge 1.21.1) every console blockstate's model and the item model are wrapped in `ConsoleBakedModel` — simpler than a geometry loader, whose registration differs between the loaders. It reads the console's shape and casing from model data (`CreatePanelBlockEntity.getModelData`), plus connection flags from the blockstate, and `ConsoleMesh` emits quads: sides/back/bottom in the casing texture, the face as the `console_plate` texture inside a 1 px frame sampled from the casing texture's second row. Quads are packed as raw `BLOCK`-format vertex data, identical on both versions. Cached per (orientation, shape, casing, connections). The bottom quad is culled against the supporting block.
-- **Components:** `PanelBlockEntityRenderer` + `ComponentPainter` draw textured boxes (Create's brass block and industrial iron textures, plus our tintable `component` texture) into `RenderType.solid()` with block-style diffuse shading from each face's real normal, so they sit naturally next to chunk geometry. Lit lamps, bar fills and nixie digits render full-bright. Nixie tubes are all glass above a brass socket, like Create's; the glass goes into our own `CCRenderTypes.GLASS` (translucent, no depth write), so the digits floating inside show through it whatever the draw order. Text render types cull back faces, so the digits go through `DoubleSidedBuffers`, which re-emits each glyph quad with reversed winding: from behind a digit shows mirrored, like a real filament. On ceiling consoles the digits turn half a turn so they read upright from below; on wall consoles they lie parallel to the face, facing out, read end-on through the glass like a top-view tube. Textures in `textures/block/` join the block atlas automatically.
+- **Components:** `PanelBlockEntityRenderer` + `ComponentPainter` draw textured boxes (Create's brass block and industrial iron textures, plus our tintable `component` texture) into `RenderType.solid()` with block-style diffuse shading from each face's real normal, so they sit naturally next to chunk geometry. Lit lamps, bar fills and nixie digits render full-bright. Nixie tubes are all glass above a brass socket, like Create's; the glass goes into our own `CCRenderTypes.GLASS` (translucent, no depth write), so the digits floating inside show through it whatever the draw order. Text render types cull back faces, so the digits go through `DoubleSidedBuffers`, which re-emits each glyph quad with reversed winding: from behind a digit shows mirrored, like a real filament. On ceiling consoles the digits turn half a turn so they read upright from below; on wall consoles they lie parallel to the face, facing out, read end-on through the glass like a top-view tube. Textures in `textures/block/` join the block atlas automatically. Nixie strips share the nixie's tube drawing. A display board has no bezel: `ComponentPainter.displayBoard` wraps a slab in Create's `flap_display_*` textures the way the real block's front slab does. The front texture's two flap rows always span the board's depth, one per text row, repeating across its width at the same scale, and the stripes run on down the sides.
 - **Proportions** (from the 2026-10-29 review): toggle and guarded switches share one 2×3 px footprint, base and short lever, the guard is just a lid over it, hinged at its top far edge on two brass posts and a pin (hidden inside the closed lid), so it flips up to stand upright within the footprint; buttons large and small stand 1.5 px; lamp lenses sit flush with their bezel; knobs stand 1.25 px; slider thumbs are 1.5 px long and 1 px tall.
 - **Animation:** none yet — states snap. Easing caps and levers is a small follow-up once the look is approved.
 

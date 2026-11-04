@@ -1,16 +1,21 @@
 package dev.mccastle91.createcontrolling.registry;
 
+import com.simibubi.create.api.behaviour.display.DisplayTarget;
+import com.simibubi.create.api.registry.CreateRegistries;
 import com.tterrag.registrate.Registrate;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import dev.mccastle91.createcontrolling.CreateControlling;
+import dev.mccastle91.createcontrolling.compat.create.ConsoleDisplayTarget;
 import dev.mccastle91.createcontrolling.compat.create.WrenchablePanelBlock;
 import dev.mccastle91.createcontrolling.item.PanelBlueprintItem;
 import dev.mccastle91.createcontrolling.panel.CCTypes;
 import dev.mccastle91.createcontrolling.panel.CreatePanelBlockEntity;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.material.MapColor;
+
+import java.util.function.Supplier;
 
 public final class CCContent {
 
@@ -41,11 +46,19 @@ public final class CCContent {
             .validBlocks(CONTROL_PANEL)
             .register();
 
+    public static final Supplier<ConsoleDisplayTarget> CONSOLE_DISPLAY_TARGET = REGISTRATE
+            .simple("console", CreateRegistries.DISPLAY_TARGET, ConsoleDisplayTarget::new);
+
     private CCContent() {
     }
 
     /** Trigger registration (class init) and hand common code its type holders. */
     public static void register() {
         CCTypes.PANEL_BLOCK_ENTITY = CONTROL_PANEL_ENTITY::get;
+    }
+
+    /** Once registries are frozen: makes consoles something a Display Link can target. */
+    public static void commonSetup() {
+        DisplayTarget.BY_BLOCK.register(CONTROL_PANEL.get(), CONSOLE_DISPLAY_TARGET.get());
     }
 }

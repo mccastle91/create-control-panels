@@ -38,6 +38,12 @@ public final class PanelElements {
     public static final PanelElementType<NixieElement> NIXIE =
             PanelElementType.register("nixie", NixieElement::new, 6, 4, 3.5f);
 
+    // Readouts show text from a Display Link; each sets its own width (see ReadoutElement)
+    public static final PanelElementType<NixieStripElement> NIXIE_STRIP =
+            PanelElementType.register("nixie_strip", NixieStripElement::new, 10.5f, 4, 3.5f);
+    public static final PanelElementType<DisplayBoardElement> DISPLAY_BOARD =
+            PanelElementType.register("display_board", DisplayBoardElement::new, 12, 6, 1.125f);
+
     // Passive; width is per-label, depth follows its text scale
     public static final PanelElementType<LabelElement> LABEL =
             PanelElementType.register("label", LabelElement::new,

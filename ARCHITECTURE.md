@@ -27,18 +27,21 @@ versions/<target>/build/   per-target outputs (Stonecutter generates each target
 ```
 PanelBlockEntity                – one console: ConsoleShape (angle, front height), ConsoleCasing, PanelLayout
  └─ PanelLayout                 – components on the 16×16 px face (design area 1..15 px); capped by config
-     └─ PanelElement (abstract) – UUID id, float px position on a 0.5 px grid, FrequencyPair; size fixed by type (labels and bar meters set their own width)
+     └─ PanelElement (abstract) – UUID id, float px position on a 0.5 px grid, FrequencyPair; size fixed by type (labels, bar meters and readouts set their own width)
          ├─ transmitters        – ButtonElement (button, large_button; pulseTicks), LatchingButtonElement,
          │                        SwitchElement, CoveredSwitchElement (closed/open/armed),
          │                        AnalogElement → KnobElement, SliderElement (value 0-15)
          ├─ receivers           – ReceiverElement → LampElement (lamp, large_lamp), NeedleMeterElement,
          │                        BarMeterElement, NixieElement
+         ├─ readouts            – ReadoutElement (line per row, size) → NixieStripElement (tubes),
+         │                        DisplayBoardElement (two rows, width)
          └─ passive             – LabelElement (text, colour, scale, alignment, width)
 ```
 
 - Component types live in a string-keyed registry (`PanelElementType`, populated by `PanelElements`), each with a footprint and height (labels and bar meters override the width per element); unknown types are skipped on load with a warning. Layouts saved by v1 (cell grid, `Version` < 2) are dropped rather than misplaced.
 - `FrequencyPair` = two item stacks (either optional, normalized to count 1), Create's frequency metaphor.
 - Persistent state = design + latching component state; received strengths are runtime-only and resync from the link network via a `Runtime` list piggybacked on the update tag.
+- Display Link text belongs to the console, by line number (`PanelBlockEntity.displayLine`), not to readouts, so readouts can mirror a line and re-pointing one takes effect at once. `ConsoleDisplayTarget` (registered in Create's display target registry and bound to the block in common setup) writes it: Link line 0 is console line 1, and the console offers lines up to the highest a readout shows. Like received strengths it is runtime-only, riding the update tag as component JSON so clients translate it; it is never saved, so blueprints and dropped consoles carry no old readings, and links resend it within seconds of a load.
 - Server-authoritative: designer edits arrive as NBT ops (`PanelEditOps`: add, move, delete, set_frequency, set_option, adjust, set_shape) and `markLayoutChanged()` persists and pushes the whole console to clients.
 - Costs: `ComponentCosts` maps each type to cost lines, each an item id or an `#item tag` (an unknown item id costs nothing). `CostPayer` charges the player's inventory when a part is mounted and returns the exact stacks taken, which the element keeps (`PanelElement.paid()`, saved as `Paid`) and refunds on removal; creative pays nothing, so creative parts refund nothing. Blueprint pastes go through `ComponentCosts.settle`, which reuses the old parts' paid items, charges the shortfall and refunds the rest.
 - Unit tests in `src/test` run inside FML on the 1.21.1 target: `gradlew :1.21.1-neoforge:test`.
@@ -56,7 +59,7 @@ We do **not** invent a signal system; we ride Create's Redstone Link network:
 
 ### Verified by GameTests (`gradlew :1.21.1-neoforge:runGametest`, `gradlew :1.20.1-forge:runGametest`)
 
-Real Create Redstone Link blocks + our panel in a live server: button pulse powers a Create receiver then expires; knob analog 11 arrives as exactly 11; a Create transmitter's analog 7 lights our lamp at exactly 7; a player's click ray on a 15° sloped console presses the button under it. Hard-won test infrastructure notes:
+Real Create Redstone Link blocks + our panel in a live server: button pulse powers a Create receiver then expires; knob analog 11 arrives as exactly 11; a Create transmitter's analog 7 lights our lamp at exactly 7; a player's click ray on a 15° sloped console presses the button under it; real Display Links write through the target Create resolves for a console, filling lines, clearing lines a source stops filling, and stopping at a line another link owns. Hard-won test infrastructure notes:
 
 1. `@GameTestHolder(MOD_ID)` sets the namespace the `neoforge.enabledGameTestNamespaces` filter matches — the `template` string's namespace does NOT count.
 2. Place Create links in transmitter state and `toggleMode()` to receiver afterwards: freshly placed `SmartBlockEntity`s only attach their deferred `LinkBehaviour` via the first-tick mode-mismatch swap; `RECEIVER=true` from the start is a state gameplay never produces (behaviour never attaches).

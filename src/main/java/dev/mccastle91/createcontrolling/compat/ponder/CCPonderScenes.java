@@ -40,6 +40,13 @@ public class CCPonderScenes {
                 .placeNearTarget();
         scene.idle(90);
 
+        scene.overlay().showText(90)
+                .text("Point a Display Link at a console to show its text on Nixie Strips and Display Boards; choose each one's line in the Console Designer")
+                .pointAt(util.vector().topOf(2, 1, 2))
+                .placeNearTarget()
+                .attachKeyFrame();
+        scene.idle(100);
+
         scene.markAsFinished();
     }
 }

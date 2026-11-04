@@ -6,9 +6,11 @@ import dev.mccastle91.createcontrolling.panel.element.ColorableElement;
 import dev.mccastle91.createcontrolling.panel.element.LabelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElementType;
+import dev.mccastle91.createcontrolling.panel.element.ReadoutElement;
 import dev.mccastle91.createcontrolling.util.McCompat;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 
@@ -54,9 +56,7 @@ public final class PanelEditOps {
                         ? FrequencyPair.of(stack, current.second())
                         : FrequencyPair.of(current.first(), stack));
             });
-            case OP_SET_OPTION -> elementFor(layout, op) instanceof BarMeterElement bar && op.getString("Key").equals("length")
-                    ? resizeBar(layout, bar, op.getFloat("Value"))
-                    : withElement(layout, op, element -> applyOption(element, op));
+            case OP_SET_OPTION -> setOption(layout, op);
             case OP_ADJUST -> {
                 PanelElement element = elementFor(layout, op);
                 yield element != null && element.scroll(op.getInt("Delta"));
@@ -84,6 +84,8 @@ public final class PanelEditOps {
             return false;
         element.setPaid(paid);
         element.setPos(spot[0], spot[1]);
+        if (element instanceof ReadoutElement readout)
+            readout.takeFreeLines(layout.readoutLines());
         if (!layout.addElement(element)) {
             payer.refund(paid);
             return false;
@@ -103,6 +105,16 @@ public final class PanelEditOps {
         return true;
     }
 
+    private static boolean setOption(PanelLayout layout, CompoundTag op) {
+        PanelElement element = elementFor(layout, op);
+        String key = op.getString("Key");
+        if (element instanceof BarMeterElement bar && key.equals("length"))
+            return resizeBar(layout, bar, op.getFloat("Value"));
+        if (element instanceof ReadoutElement readout && key.equals("size"))
+            return resizeReadout(layout, readout, op.getInt("Value"));
+        return withElement(layout, op, target -> applyOption(target, op));
+    }
+
     /**
      * Lengthens or shortens a bar meter from its left end, sliding it left
      * if it would run off the face; refused if it would overlap a neighbour.
@@ -116,6 +128,21 @@ public final class PanelEditOps {
             return false;
         bar.setLength(length);
         bar.setPos(x, bar.y());
+        return true;
+    }
+
+    /** Resizes a readout about its centre, keeping it on the face; refused if it would overlap a neighbour. */
+    private static boolean resizeReadout(PanelLayout layout, ReadoutElement readout, int requested) {
+        int size = readout.clampSize(requested);
+        if (size == readout.size())
+            return false;
+        float width = readout.widthFor(size);
+        float x = Mth.clamp(PanelElement.snap(readout.x() - (width - readout.width()) / 2),
+                PanelElement.AREA_MIN, PanelElement.AREA_MAX - width);
+        if (!layout.isAreaFree(x, readout.y(), width, readout.depth(), readout.id(), false))
+            return false;
+        readout.setSize(size);
+        readout.setPos(x, readout.y());
         return true;
     }
 
@@ -154,6 +181,8 @@ public final class PanelEditOps {
             colorable.setColor(DyeColor.byName(op.getString("Value"), colorable.color()));
         else if (element instanceof ButtonElement button && key.equals("pulse_ticks"))
             button.setPulseTicks(op.getInt("Value"));
+        else if (element instanceof ReadoutElement readout && key.equals("line"))
+            readout.setLine(op.getInt("Row"), op.getInt("Value"));
         else if (element instanceof LabelElement label)
             switch (key) {
                 case "text" -> label.setText(op.getString("Value"));

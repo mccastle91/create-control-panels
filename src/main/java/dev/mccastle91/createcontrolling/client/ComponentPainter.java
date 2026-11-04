@@ -30,6 +30,9 @@ public final class ComponentPainter {
     public static final ResourceLocation COMPONENT = McCompat.id("create_controlling", "block/component");
     public static final ResourceLocation BRASS = McCompat.id("create", "block/brass_block");
     public static final ResourceLocation IRON = McCompat.id("create", "block/industrial_iron_block");
+    public static final ResourceLocation BOARD_FRONT = McCompat.id("create", "block/flap_display_front");
+    public static final ResourceLocation BOARD_SIDE = McCompat.id("create", "block/flap_display_side");
+    public static final ResourceLocation BOARD_EDGE = McCompat.id("create", "block/flap_display_top");
 
     private static final float PX = 1 / 16f;
 
@@ -105,8 +108,42 @@ public final class ComponentPainter {
                 new Vector3f(0, 0, 1), sprite, argb, light);
     }
 
+    /**
+     * A slab dressed like Create's display board, {@code w} by {@code d} and
+     * {@code h} tall from the face. The front texture's two flap rows always
+     * span the depth, repeating across the width at the same scale; the stripes
+     * run on down the sides, and the edges take the board's rim, all from the
+     * same parts of the textures as the real block's front slab.
+     */
+    public void displayBoard(float w, float d, float h, TextureAtlasSprite front, TextureAtlasSprite side,
+                             TextureAtlasSprite edge, int light) {
+        int white = 0xFFFFFFFF;
+        for (float x = 0; x < w; x += d) {
+            float span = Math.min(d, w - x), v = 16 * span / d;
+            mapped(new Vector3f(x, 0, h), new Vector3f(span, 0, 0), new Vector3f(0, d, 0), new Vector3f(0, 0, 1),
+                    new float[] { 0, v, v, 0 }, new float[] { 0, 0, 16, 16 }, front, white, light);
+            mapped(new Vector3f(x, 0, 0), new Vector3f(span, 0, 0), new Vector3f(0, 0, h), new Vector3f(0, -1, 0),
+                    new float[] { 3, 3, 0, 0 }, new float[] { 0, v, v, 0 }, edge, white, light);
+            mapped(new Vector3f(x, d, 0), new Vector3f(span, 0, 0), new Vector3f(0, 0, h), new Vector3f(0, 1, 0),
+                    new float[] { 7, 7, 10, 10 }, new float[] { 0, v, v, 0 }, edge, white, light);
+        }
+        float[] down = { 0, 0, 16, 16 };
+        mapped(new Vector3f(0, 0, 0), new Vector3f(0, 0, h), new Vector3f(0, d, 0), new Vector3f(-1, 0, 0),
+                new float[] { 3, 0, 0, 3 }, down, side, white, light);
+        mapped(new Vector3f(w, 0, 0), new Vector3f(0, 0, h), new Vector3f(0, d, 0), new Vector3f(1, 0, 0),
+                new float[] { 13, 16, 16, 13 }, down, side, white, light);
+    }
+
     private void face(Vector3f corner, Vector3f e1, Vector3f e2, Vector3f normal,
                       TextureAtlasSprite sprite, int argb, int light) {
+        float uSpan = Math.min(e1.length(), 16f), vSpan = Math.min(e2.length(), 16f);
+        mapped(corner, e1, e2, normal, new float[] { 0, uSpan, uSpan, 0 }, new float[] { 0, 0, vSpan, vSpan },
+                sprite, argb, light);
+    }
+
+    /** One quad; {@code us} and {@code vs} are sprite px at corner, +e1, +e1+e2 and +e2. */
+    private void mapped(Vector3f corner, Vector3f e1, Vector3f e2, Vector3f normal, float[] us, float[] vs,
+                        TextureAtlasSprite sprite, int argb, int light) {
         Vec3[] p = {
                 toBlock(new Vector3f(corner)),
                 toBlock(new Vector3f(corner).add(e1)),
@@ -115,9 +152,6 @@ public final class ComponentPainter {
         Vector3f fn = local.transformDirection(new Vector3f(normal)).normalize();
         Vec3 n = face.u().scale(fn.x).add(face.v().scale(fn.y)).add(face.normal().scale(fn.z)).normalize();
 
-        float uSpan = Math.min(e1.length(), 16f), vSpan = Math.min(e2.length(), 16f);
-        float[] us = { 0, uSpan, uSpan, 0 };
-        float[] vs = { 0, 0, vSpan, vSpan };
         int[] order = { 0, 1, 2, 3 };
         Vec3 winding = p[1].subtract(p[0]).cross(p[3].subtract(p[0]));
         if (winding.dot(n) < 0)
@@ -191,7 +225,7 @@ public final class ComponentPainter {
     }
 
     /** Visible glyph height as a fraction of a font line (a line includes spacing below). */
-    private static final float GLYPH_HEIGHT = 0.8f;
+    public static final float GLYPH_HEIGHT = 0.8f;
 
     private void text(Font font, String text, Vec3 origin, Vec3 xAxis, Vec3 yAxis, Vec3 zAxis,
                       float lineHeight, int argb, int light) {

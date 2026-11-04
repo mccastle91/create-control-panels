@@ -8,13 +8,16 @@ import dev.mccastle91.createcontrolling.panel.element.BarMeterElement;
 import dev.mccastle91.createcontrolling.panel.element.ButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.ColorableElement;
 import dev.mccastle91.createcontrolling.panel.element.CoveredSwitchElement;
+import dev.mccastle91.createcontrolling.panel.element.DisplayBoardElement;
 import dev.mccastle91.createcontrolling.panel.element.KnobElement;
 import dev.mccastle91.createcontrolling.panel.element.LabelElement;
 import dev.mccastle91.createcontrolling.panel.element.LampElement;
 import dev.mccastle91.createcontrolling.panel.element.LatchingButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.NeedleMeterElement;
 import dev.mccastle91.createcontrolling.panel.element.NixieElement;
+import dev.mccastle91.createcontrolling.panel.element.NixieStripElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
+import dev.mccastle91.createcontrolling.panel.element.ReadoutElement;
 import dev.mccastle91.createcontrolling.panel.element.SliderElement;
 import dev.mccastle91.createcontrolling.panel.element.SwitchElement;
 import dev.mccastle91.createcontrolling.util.McCompat;
@@ -40,6 +43,12 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
     private static final int DARK = 0xFF1C1C1F;
     private static final int GLASS = 0x40F2C9A0;
     private static final int NIXIE_GLOW = 0xFFFF9A2E;
+    private static final int BOARD_TEXT = 0xFFEDEDED;
+
+    /** Board text font line height, px, and how far long text may shrink to fit before it's cut off. */
+    private static final float BOARD_LINE = 2.6f;
+    private static final float BOARD_LINE_MIN = 1.6f;
+    private static final float BOARD_MARGIN = 0.5f;
 
     /** Lever rod length (px) shared by the toggle and guarded switches; the tip adds {@link #LEVER_TIP}. */
     private static final float LEVER_LENGTH = 1.1f;
@@ -50,7 +59,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
      */
     private static final float LIFT = 0.05f;
 
-    private TextureAtlasSprite component, brass, iron;
+    private TextureAtlasSprite component, brass, iron, boardFront, boardSide, boardEdge;
     private int light;
     /** Ceiling consoles: parts hang, so standing text turns to read from below. */
     private boolean hanging;
@@ -66,6 +75,9 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         component = ComponentPainter.sprite(ComponentPainter.COMPONENT);
         brass = ComponentPainter.sprite(ComponentPainter.BRASS);
         iron = ComponentPainter.sprite(ComponentPainter.IRON);
+        boardFront = ComponentPainter.sprite(ComponentPainter.BOARD_FRONT);
+        boardSide = ComponentPainter.sprite(ComponentPainter.BOARD_SIDE);
+        boardEdge = ComponentPainter.sprite(ComponentPainter.BOARD_EDGE);
         light = packedLight;
         AttachFace attach = state.getValue(FaceAttachedHorizontalDirectionalBlock.FACE);
         hanging = attach == AttachFace.CEILING;
@@ -101,6 +113,10 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
                 barMeter(p, w, d, meter.displayStrength(), color(meter));
             else if (element instanceof NixieElement nixie)
                 nixie(p, font, element, nixie.digits());
+            else if (element instanceof NixieStripElement strip)
+                nixieStrip(p, font, panel, strip);
+            else if (element instanceof DisplayBoardElement board)
+                displayBoard(p, font, panel, board);
             p.pop();
         }
     }
@@ -250,42 +266,79 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
                     ComponentPainter.FULL_BRIGHT);
     }
 
-    /** Two tubes like Create's nixie: square brass sockets, all-glass bulbs, digits floating in the middle. */
     private void nixie(ComponentPainter p, Font font, PanelElement element, int[] digits) {
+        String[] glyphs = new String[digits.length];
+        for (int i = 0; i < digits.length; i++)
+            glyphs[i] = digits[i] < 0 ? " " : Integer.toString(digits[i]);
+        tubes(p, font, element, glyphs);
+    }
+
+    private void nixieStrip(ComponentPainter p, Font font, T panel, NixieStripElement strip) {
+        String text = strip.glyphs(panel.displayLine(strip.line(0)).getString());
+        String[] glyphs = new String[text.length()];
+        for (int i = 0; i < glyphs.length; i++)
+            glyphs[i] = text.substring(i, i + 1);
+        tubes(p, font, strip, glyphs);
+    }
+
+    /** A row of tubes like Create's nixie: square brass sockets, all-glass bulbs, characters floating in the middle. */
+    private void tubes(ComponentPainter p, Font font, PanelElement element, String[] glyphs) {
         float w = element.width(), d = element.depth(), h = element.height();
         p.box(0, 0, 0, w, d, 0.5f, iron, 0xFFFFFFFF, light);
-        float tube = (w - 1.5f) / 2;
+        int count = glyphs.length;
+        float tube = (w - 0.5f * (count + 1)) / count;
         float y0 = (d - tube) / 2, y1 = y0 + tube;
         float socket = 0.9f;
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < count; i++) {
             float x0 = 0.5f + i * (tube + 0.5f), x1 = x0 + tube;
             p.box(x0, y0, 0.5f, x1, y1, socket, brass, 0xFFFFFFFF, light);
         }
-        // digits float in the middle of each tube, readable from either side: standing
+        // characters float in the middle of each tube, readable from either side: standing
         // and facing the player on floors and ceilings, read end-on through the glass
         // (like a top-view tube) on walls, where the player looks straight at the face
         float lineHeight = 2.4f;
-        for (int i = 0; i < 2; i++) {
-            if (digits[i] < 0)
+        for (int i = 0; i < count; i++) {
+            if (glyphs[i].isBlank())
                 continue;
-            String digit = Integer.toString(digits[i]);
+            String glyph = glyphs[i];
             float x0 = 0.5f + i * (tube + 0.5f);
-            float textWidth = font.width(digit) * lineHeight / font.lineHeight;
+            float textWidth = font.width(glyph) * lineHeight / font.lineHeight;
             float textX = element.x() + x0 + (tube - textWidth) / 2, midY = element.y() + (y0 + y1) / 2;
             if (onWall)
-                p.floatingText(font, digit, textX, midY, (socket + h) / 2, lineHeight, NIXIE_GLOW,
+                p.floatingText(font, glyph, textX, midY, (socket + h) / 2, lineHeight, NIXIE_GLOW,
                         ComponentPainter.FULL_BRIGHT);
             else
-                p.standingText(font, digit, textX, midY, (socket + h) / 2, lineHeight, NIXIE_GLOW,
+                p.standingText(font, glyph, textX, midY, (socket + h) / 2, lineHeight, NIXIE_GLOW,
                         ComponentPainter.FULL_BRIGHT, hanging);
         }
         // the glass last and see-through, from the socket to the top
         p.translucent(true);
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < count; i++) {
             float x0 = 0.5f + i * (tube + 0.5f), x1 = x0 + tube;
             p.box(x0 + 0.1f, y0 + 0.1f, socket, x1 - 0.1f, y1 - 0.1f, h, component, GLASS, light);
         }
         p.translucent(false);
+    }
+
+    /** No bezel: the board's own stripes run down its sides, as on Create's block. One line of text per flap row. */
+    private void displayBoard(ComponentPainter p, Font font, T panel, DisplayBoardElement board) {
+        float w = board.width(), d = board.depth(), h = board.height();
+        p.displayBoard(w, d, h, boardFront, boardSide, boardEdge, light);
+        float rowDepth = d / board.rows(), room = w - 2 * BOARD_MARGIN;
+        for (int row = 0; row < board.rows(); row++) {
+            if (board.line(row) == ReadoutElement.NO_LINE)
+                continue;
+            String text = panel.displayLine(board.line(row)).getString().trim();
+            if (text.isEmpty())
+                continue;
+            float lineHeight = Math.max(BOARD_LINE_MIN,
+                    Math.min(BOARD_LINE, room * font.lineHeight / font.width(text)));
+            int columns = (int) (room * font.lineHeight / lineHeight);
+            if (font.width(text) > columns)
+                text = font.plainSubstrByWidth(text, columns - font.width("…")) + "…";
+            float y = board.y() + row * rowDepth + (rowDepth - lineHeight * ComponentPainter.GLYPH_HEIGHT) / 2;
+            p.faceText(font, text, board.x() + BOARD_MARGIN, y, h + LIFT, lineHeight, BOARD_TEXT, light);
+        }
     }
 
     private void label(ComponentPainter p, Font font, LabelElement label) {
