@@ -41,6 +41,11 @@ public abstract class AnalogElement extends PanelElement implements ColorableEle
     }
 
     @Override
+    public boolean operate(int strength) {
+        return setValue(strength);
+    }
+
+    @Override
     public boolean hasPersistentState() {
         return true;
     }

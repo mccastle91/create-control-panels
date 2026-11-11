@@ -1,6 +1,7 @@
 package dev.mccastle91.createcontrolling;
 
 import dev.mccastle91.createcontrolling.client.CreateControllingClient;
+import dev.mccastle91.createcontrolling.compat.computercraft.ComputerCraftCompat;
 import dev.mccastle91.createcontrolling.compat.create.CreateLinkPlatform;
 import dev.mccastle91.createcontrolling.config.CCConfigSpec;
 import dev.mccastle91.createcontrolling.link.CCLink;
@@ -54,6 +55,9 @@ public class CreateControllingMod {
         modEventBus.addListener(this::onConfigReloading);
         if (FMLEnvironment.dist == Dist.CLIENT)
             CreateControllingClient.init(modEventBus);
+        // Optional: the class below is only ever loaded with CC: Tweaked present
+        if (ModList.get().isLoaded("computercraft"))
+            ComputerCraftCompat.init(modEventBus);
         // Game tests are discovered via @GameTestHolder annotation scanning
     }
 

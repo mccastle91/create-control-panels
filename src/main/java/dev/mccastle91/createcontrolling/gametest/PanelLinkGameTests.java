@@ -296,6 +296,65 @@ public class PanelLinkGameTests {
      * Create's link range (256) spans all test structures — a shared
      * frequency leaks the strongest transmitter into every other test.
      */
+    /** What a computer does through the peripheral: write to a lamp, see the change, let go. */
+    @GameTest(template = EMPTY)
+    public void automationDrivesLampFrequencyAndReportsIt(GameTestHelper helper) {
+        LampElement lamp = PanelElements.LAMP.create();
+        lamp.setFrequency(freq(Items.QUARTZ, Items.CLOCK));
+        PanelBlockEntity panel = placePanelWith(helper, lamp);
+        placeCreateLink(helper);
+        int[] reported = {-1};
+        panel.addSignalListener((element, strength) -> {
+            if (element == lamp)
+                reported[0] = strength;
+        });
+
+        helper.startSequence()
+                .thenWaitUntil(() -> setCreateLinkFrequency(helper, lamp.frequency()))
+                .thenExecute(() -> makeCreateLinkReceiver(helper))
+                .thenExecuteAfter(2, () -> {
+                    if (!panel.setSignal(lamp.id(), 9))
+                        throw new GameTestAssertException("Lamp did not accept a signal");
+                })
+                .thenWaitUntil(() -> {
+                    int received = createLinkReceivedSignal(helper);
+                    if (lamp.displayStrength() != 9 || received != 9 || reported[0] != 9)
+                        throw new GameTestAssertException("Expected 9 everywhere, got lamp=" + lamp.displayStrength()
+                                + " createLink=" + received + " reported=" + reported[0]);
+                })
+                .thenExecute(panel::clearDrivenSignals)
+                .thenWaitUntil(() -> {
+                    int received = createLinkReceivedSignal(helper);
+                    if (lamp.displayStrength() != 0 || received != 0 || reported[0] != 0)
+                        throw new GameTestAssertException("Expected 0 after letting go, got lamp="
+                                + lamp.displayStrength() + " createLink=" + received + " reported=" + reported[0]);
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = EMPTY)
+    public void automationOperatesControls(GameTestHelper helper) {
+        KnobElement knob = PanelElements.KNOB.create();
+        knob.setFrequency(freq(Items.AMETHYST_SHARD, Items.FEATHER));
+        PanelBlockEntity panel = placePanelWith(helper, knob);
+        placeCreateLink(helper);
+
+        helper.startSequence()
+                .thenWaitUntil(() -> setCreateLinkFrequency(helper, knob.frequency()))
+                .thenExecute(() -> makeCreateLinkReceiver(helper))
+                .thenExecuteAfter(2, () -> {
+                    if (!panel.setSignal(knob.id(), 6))
+                        throw new GameTestAssertException("Knob did not accept a signal");
+                })
+                .thenWaitUntil(() -> {
+                    int received = createLinkReceivedSignal(helper);
+                    if (knob.value() != 6 || received != 6)
+                        throw new GameTestAssertException("Expected knob and Create receiver at 6, got knob="
+                                + knob.value() + " createLink=" + received);
+                })
+                .thenSucceed();
+    }
+
     private static FrequencyPair freq(ItemLike first, ItemLike second) {
         return FrequencyPair.of(new ItemStack(first), new ItemStack(second));
     }

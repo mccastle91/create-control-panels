@@ -31,6 +31,10 @@ repositories {
     maven("https://maven.createmod.net") { name = "Create" }        // Create, Ponder, Flywheel
     maven("https://maven.ithundxr.dev/mirror") { name = "Registrate" }
     maven("https://maven.blamejared.com") { name = "JEI" }
+    maven("https://maven.squiddev.cc") {
+        name = "CC: Tweaked"
+        content { includeGroup("cc.tweaked") }
+    }
 }
 
 dependencies {
@@ -51,6 +55,10 @@ dependencies {
     modCompileOnly("mezz.jei:jei-$mcVersion-common-api:${property("deps.jei")}")
     modCompileOnly("mezz.jei:jei-$mcVersion-forge-api:${property("deps.jei")}")
     modRuntimeOnly("mezz.jei:jei-$mcVersion-forge:${property("deps.jei")}")
+    // CC: Tweaked is optional: compile against its API, run the full mod in dev only
+    modCompileOnly("cc.tweaked:cc-tweaked-$mcVersion-forge-api:${property("deps.cct")}")
+    compileOnly("cc.tweaked:cc-tweaked-$mcVersion-core-api:${property("deps.cct")}")
+    modRuntimeOnly("cc.tweaked:cc-tweaked-$mcVersion-forge:${property("deps.cct")}")
     // Create's mixins need MixinExtras at runtime; its release jar bundles it
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("deps.mixinextras")}")!!)
     implementation("io.github.llamalad7:mixinextras-forge:${property("deps.mixinextras")}")

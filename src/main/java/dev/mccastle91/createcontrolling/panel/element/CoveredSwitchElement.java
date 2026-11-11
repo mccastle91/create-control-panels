@@ -55,6 +55,15 @@ public class CoveredSwitchElement extends PanelElement implements ColorableEleme
         return changed;
     }
 
+    /** Arming lifts the cover on the way; switching off closes it. */
+    @Override
+    public boolean operate(int strength) {
+        State next = strength > 0 ? State.ARMED : State.CLOSED;
+        boolean changed = next != state;
+        state = next;
+        return changed;
+    }
+
     @Override
     public boolean hasPersistentState() {
         return true;

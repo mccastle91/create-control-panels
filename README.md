@@ -30,6 +30,7 @@ v1 (phases 1–8 below) was the flat-panel version. **v2** redesigns it towards 
 | Create (built/tested against) | 6.0.8 | 6.0.10 |
 | Ponder / Flywheel / Registrate | 1.0.91 / 1.0.5 / MC1.20-1.3.3 | 1.0.82 / 1.0.6 / MC1.21-1.3.0+67 |
 | JEI (optional) | 15.x (built against 15.74.0.234) | 19.x (built against 19.70.0.469) |
+| CC: Tweaked (optional) | built against 1.121.0 | built against 1.121.0 |
 | Java | 17 | 21 |
 
 6.0.8 is the newest Create release published for both Minecraft versions, so it's the shared minimum. The companion versions match what each Create release bundles. All versions live in [stonecutter.properties.toml](stonecutter.properties.toml).
@@ -54,7 +55,37 @@ Jars land in `versions/<version>/build/libs/`. The 1.20.1 jar there is the reobf
 - **Use** a component to operate it; using a knob or slider steps it up one, **sneak-use** steps it down one (**sneak-scroll** also nudges it). Sneak-use anywhere else opens the designer.
 - **Sneak-wrench** a console to step through the 0/15/30/45° angles. Floor and ceiling consoles slope one way, towards you; wall consoles start flat and can tilt either way — the wrench runs through the angles with the top edge standing out, then with the bottom edge out (in the designer, the *Top out / Bottom out* button swaps them). **Right-click with a Create casing** (Andesite, Brass, Copper or Train Casing, or a Block of Industrial Iron) to re-dress it.
 - **Show live text** with a Display Link: mount a **Nixie Strip** (2–5 tubes, one line) or a **Display Board** (always two rows, each with its own line), and set which line each uses in the designer. Right-click the console with a Display Link, place the link on any Create display source, then open the link and pick that line. Anything a Display Link can read works, including sources from other mods. Tubes show one character each: numbers lose decimals, then their unit, to fit, and show dashes if they still can't. Long board text shrinks, then is cut off.
+- **Wire it to a computer** (optional, needs [CC: Tweaked](https://tweaked.cc/)): see [Computers](#computers-cc-tweaked) below.
 - Breaking a console keeps its design; a **Console Blueprint** copies a design onto other consoles, charging only for parts the target lacks.
+
+## Computers (CC: Tweaked)
+
+With CC: Tweaked installed, a console next to a computer (or on a wired modem) is a `control_console` peripheral. The computer sees every component that has a Redstone Link role, numbered from 1 in the order they were mounted (labels and Display Link readouts are skipped). Everything still travels over Create's link network, so what a computer sets is seen by every Redstone Link on that frequency.
+
+| Call | What it does |
+|---|---|
+| `getComponents()` | A list of tables: `index`, `type` (`button`, `toggle_switch`, `lamp`, ...), `direction` (`"transmit"` for controls, `"receive"` for lamps and meters), `value` (0-15), `frequency` (`first` / `second` item ids; a blank slot is absent), and `x` / `y` on the face in pixels. |
+| `getValue(index)` | The strength (0-15) a control is sending, or a lamp or meter is receiving. |
+| `setValue(index, value)` | On a control: operates it so it sends `value` — switches and latching buttons take anything above 0 as on, a guarded switch arms, a knob or slider moves to `value`, a momentary button gives one pulse. On a lamp or meter: the console sends `value` on that component's frequency until you set 0 or the computer shuts down or is disconnected. |
+
+Whenever a component's signal changes, attached computers get a `console_signal` event with the peripheral's name, the component's index and the new value.
+
+```lua
+local console = peripheral.find("control_console")
+for _, c in ipairs(console.getComponents()) do
+  print(c.index, c.type, c.direction, c.value, c.frequency.first, c.frequency.second)
+end
+
+console.setValue(2, 15)                 -- light the lamp that is component 2
+while true do
+  local _, name, index, value = os.pullEvent("console_signal")
+  if index == 1 then                    -- component 1 is a switch
+    console.setValue(2, value)
+  end
+end
+```
+
+Editing the console in the designer can renumber its components; call `getComponents()` again after changing a design.
 
 ## Layout
 

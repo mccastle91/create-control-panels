@@ -35,6 +35,13 @@ public class SwitchElement extends PanelElement implements ColorableElement {
     }
 
     @Override
+    public boolean operate(int strength) {
+        boolean changed = on != strength > 0;
+        on = strength > 0;
+        return changed;
+    }
+
+    @Override
     public boolean hasPersistentState() {
         return true;
     }

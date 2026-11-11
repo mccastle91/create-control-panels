@@ -20,8 +20,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * A console: its sloped shape, its casing, and the components on its face.
@@ -107,6 +109,8 @@ public class PanelBlockEntity extends BlockEntity {
         setChanged();
         syncToClients();
         rebuildLinkPorts();
+        for (PanelElement element : layout.elements())
+            signalMayHaveChanged(element);
     }
 
     /** The text on a line, or nothing if no Display Link has sent it any. */
@@ -181,15 +185,24 @@ public class PanelBlockEntity extends BlockEntity {
     public void unloadLinkPorts() {
         linkPorts.values().forEach(LinkPort::remove);
         linkPorts.clear();
+        drivePorts.values().forEach(LinkPort::remove);
+        drivePorts.clear();
         portsInitialized = false;
     }
 
     public void rebuildLinkPorts() {
         linkPorts.values().forEach(LinkPort::remove);
         linkPorts.clear();
+        drivePorts.values().forEach(LinkPort::remove);
+        drivePorts.clear();
         if (level == null || level.isClientSide || CCLink.PLATFORM == null)
             return;
         portsInitialized = true;
+        // Signals a computer is sending follow their component's frequency,
+        // and end with a component that was removed or unlinked
+        drivenStrengths.keySet().removeIf(id -> layout.elementById(id)
+                .filter(element -> element.isReceiver() && !element.frequency().isEmpty()).isEmpty());
+        drivenStrengths.keySet().forEach(id -> openDrivePort(layout.elementById(id).orElseThrow()));
         for (PanelElement element : layout.elements()) {
             if (element.frequency().isEmpty())
                 continue;
@@ -205,8 +218,10 @@ public class PanelBlockEntity extends BlockEntity {
     }
 
     private void onStrengthReceived(PanelElement element, int strength) {
-        if (element.receiveStrength(strength))
+        if (element.receiveStrength(strength)) {
             syncToClients();
+            signalMayHaveChanged(element);
+        }
     }
 
     private void notifyStrengthChanged(UUID elementId) {
@@ -234,6 +249,109 @@ public class PanelBlockEntity extends BlockEntity {
         if (element.hasPersistentState())
             setChanged();
         syncToClients();
+        signalMayHaveChanged(element);
+    }
+
+    // --- Automation (computers) ----------------------------------------------
+    // A computer works a console through the same link network as everything
+    // else: it operates controls like a hand would, and "writes" to a lamp or
+    // meter by sending on that component's frequency from the console.
+
+    /** Told when the signal on one of the console's components changes; server only. */
+    public interface SignalListener {
+        void signalChanged(PanelElement element, int strength);
+    }
+
+    private final List<SignalListener> signalListeners = new CopyOnWriteArrayList<>();
+    private final Map<UUID, Integer> lastSignals = new HashMap<>();
+
+    /** What a computer sends on receiver components' frequencies. Never saved: it ends with the program. */
+    private final Map<UUID, Integer> drivenStrengths = new HashMap<>();
+    private final Map<UUID, LinkPort> drivePorts = new HashMap<>();
+
+    /** The strength (0-15) a component sends, or the one it reads off its frequency. */
+    public static int signalOf(PanelElement element) {
+        return element.isTransmitter() ? element.transmittedStrength() : element.displayStrength();
+    }
+
+    public void addSignalListener(SignalListener listener) {
+        signalListeners.add(listener);
+    }
+
+    private void signalMayHaveChanged(PanelElement element) {
+        if (signalListeners.isEmpty() || !element.isTransmitter() && !element.isReceiver())
+            return;
+        int strength = signalOf(element);
+        Integer previous = lastSignals.put(element.id(), strength);
+        if (previous != null && previous == strength)
+            return;
+        for (SignalListener listener : signalListeners)
+            listener.signalChanged(element, strength);
+    }
+
+    /**
+     * Sets a component's signal from outside: a control is operated to send
+     * {@code strength}; for a lamp, meter or other receiver the console itself
+     * sends {@code strength} on the component's frequency (0 stops sending).
+     * Returns false if there is no such component or it has nothing to set.
+     */
+    public boolean setSignal(UUID elementId, int strength) {
+        PanelElement element = layout.elementById(elementId).orElse(null);
+        if (element == null || level == null || level.isClientSide)
+            return false;
+        strength = Math.max(0, Math.min(15, strength));
+        if (element.isTransmitter()) {
+            if (element.operate(strength))
+                onElementStateChanged(element);
+            return true;
+        }
+        if (!element.isReceiver() || element.frequency().isEmpty())
+            return false;
+        if (strength == 0) {
+            drivenStrengths.remove(elementId);
+            closeDrivePort(drivePorts.remove(elementId));
+            return true;
+        }
+        drivenStrengths.put(elementId, strength);
+        LinkPort port = drivePorts.get(elementId);
+        if (port != null)
+            port.notifyStrengthChanged();
+        else
+            openDrivePort(element);
+        return true;
+    }
+
+    /** Stops everything {@link #setSignal} is sending on receivers' frequencies. */
+    public void clearDrivenSignals() {
+        drivenStrengths.clear();
+        drivePorts.values().forEach(this::closeDrivePort);
+        drivePorts.clear();
+    }
+
+    /** Its strength must already read 0: listeners are told before the port leaves the network. */
+    private void closeDrivePort(LinkPort port) {
+        if (port == null)
+            return;
+        port.notifyStrengthChanged();
+        port.remove();
+    }
+
+    private void openDrivePort(PanelElement element) {
+        if (CCLink.PLATFORM == null)
+            return;
+        UUID id = element.id();
+        drivePorts.put(id, CCLink.PLATFORM.createPort(level, worldPosition, element.frequency(), false,
+                () -> drivenStrengths.getOrDefault(id, 0), strength -> { }, () -> !isRemoved()));
+    }
+
+    /** One slot for an optional integration's per-console object (see compat/computercraft). */
+    private Object integrationData;
+
+    @SuppressWarnings("unchecked")
+    public <T> T integrationData(java.util.function.Function<PanelBlockEntity, T> factory) {
+        if (integrationData == null)
+            integrationData = factory.apply(this);
+        return (T) integrationData;
     }
 
     /** Lets elements run timers (button pulses); registered by PanelBlock server-side only. */
@@ -244,6 +362,7 @@ public class PanelBlockEntity extends BlockEntity {
         for (PanelElement element : layout.elements()) {
             if (element.tick()) {
                 notifyStrengthChanged(element.id());
+                signalMayHaveChanged(element);
                 anyChanged = true;
             }
         }

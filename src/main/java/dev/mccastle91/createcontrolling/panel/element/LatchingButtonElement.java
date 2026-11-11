@@ -35,6 +35,13 @@ public class LatchingButtonElement extends PanelElement implements ColorableElem
     }
 
     @Override
+    public boolean operate(int strength) {
+        boolean changed = on != strength > 0;
+        on = strength > 0;
+        return changed;
+    }
+
+    @Override
     public boolean hasPersistentState() {
         return true;
     }

@@ -42,6 +42,16 @@ public class ButtonElement extends PanelElement implements ColorableElement {
         return wasOff;
     }
 
+    /** Above 0 presses the button for one pulse; 0 lets go of it early. */
+    @Override
+    public boolean operate(int strength) {
+        if (strength > 0)
+            return click(0, 0, false);
+        boolean wasOn = remainingPulse > 0;
+        remainingPulse = 0;
+        return wasOn;
+    }
+
     @Override
     public boolean tick() {
         if (remainingPulse <= 0)

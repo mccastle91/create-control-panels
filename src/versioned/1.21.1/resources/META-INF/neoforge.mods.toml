@@ -42,3 +42,11 @@ type = "optional"
 versionRange = "[19,)"
 ordering = "NONE"
 side = "CLIENT"
+
+# Optional: consoles are a peripheral computers can read and drive
+[[dependencies.create_controlling]]
+modId = "computercraft"
+type = "optional"
+versionRange = "[1.110,)"
+ordering = "NONE"
+side = "BOTH"

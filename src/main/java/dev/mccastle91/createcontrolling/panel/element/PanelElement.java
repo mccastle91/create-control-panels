@@ -201,6 +201,15 @@ public abstract class PanelElement {
         return false;
     }
 
+    /**
+     * Sets a control the way a hand would so that it sends {@code strength}
+     * (0-15); on/off controls treat anything above 0 as on. Used by
+     * automation (computers). Returns true if the state changed.
+     */
+    public boolean operate(int strength) {
+        return false;
+    }
+
     /** Server tick; returns true if the transmitted strength changed (e.g. a pulse ended). */
     public boolean tick() {
         return false;

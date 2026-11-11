@@ -29,6 +29,10 @@ repositories {
     maven("https://maven.createmod.net") { name = "Create" }          // Create, Ponder, Flywheel
     maven("https://maven.ithundxr.dev/snapshots") { name = "Registrate" }
     maven("https://maven.blamejared.com") { name = "JEI" }
+    maven("https://maven.squiddev.cc") {
+        name = "CC: Tweaked"
+        content { includeGroup("cc.tweaked") }
+    }
 }
 
 dependencies {
@@ -51,6 +55,12 @@ dependencies {
     compileOnly("mezz.jei:jei-$mcVersion-common-api:${property("deps.jei")}")
     compileOnly("mezz.jei:jei-$mcVersion-neoforge-api:${property("deps.jei")}")
     runtimeOnly("mezz.jei:jei-$mcVersion-neoforge:${property("deps.jei")}")
+
+    // CC: Tweaked is optional: compile against its API, run the full mod in dev only
+    // (its NeoForge artifacts keep the "forge" name)
+    compileOnly("cc.tweaked:cc-tweaked-$mcVersion-forge-api:${property("deps.cct")}") { isTransitive = false }
+    compileOnly("cc.tweaked:cc-tweaked-$mcVersion-core-api:${property("deps.cct")}") { isTransitive = false }
+    runtimeOnly("cc.tweaked:cc-tweaked-$mcVersion-forge:${property("deps.cct")}") { isTransitive = false }
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
