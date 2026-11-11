@@ -16,6 +16,8 @@ public class CCPonderPlugin implements PonderPlugin {
     @Override
     public void registerScenes(PonderSceneRegistrationHelper<ResourceLocation> helper) {
         helper.forComponents(CCContent.CONTROL_PANEL.getId())
-                .addStoryBoard("control_panel", CCPonderScenes::controlPanel);
+                .addStoryBoard("control_panel", CCPonderScenes::building)
+                .addStoryBoard("control_panel_linking", CCPonderScenes::linking)
+                .addStoryBoard("control_panel_display", CCPonderScenes::display);
     }
 }

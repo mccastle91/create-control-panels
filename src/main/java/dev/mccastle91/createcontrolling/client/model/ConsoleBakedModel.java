@@ -69,6 +69,19 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
         return side == mesh.bottomSide() ? mesh.bottom() : List.of();
     }
 
+    /**
+     * Renderers that draw a level of their own (Ponder scenes, schematics)
+     * may not keep model data per position; ask the console itself then.
+     */
+    @Override
+    public ModelData getModelData(net.minecraft.world.level.BlockAndTintGetter level, net.minecraft.core.BlockPos pos,
+                                  BlockState state, ModelData data) {
+        if (!data.has(CreatePanelBlockEntity.SHAPE_PROPERTY)
+                && level.getBlockEntity(pos) instanceof CreatePanelBlockEntity console)
+            return console.getModelData();
+        return data;
+    }
+
     // Item rendering swaps in whatever model these return. The wrapper's
     // defaults delegate to the placeholder JSON model, which answers with
     // itself — and it has no quads, so the item would be invisible.

@@ -1,6 +1,5 @@
 package dev.mccastle91.createcontrolling.gametest;
 
-import dev.mccastle91.createcontrolling.panel.element.PanelElements;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
@@ -74,95 +73,95 @@ class GameTestStructureGenerator {
     }
 
     /**
-     * Ponder scene schematic: a brass-casing pedestal with a sloped brass
-     * console on top, its layout pre-populated with a typical boiler-room
-     * arrangement (block-entity NBT baked into the structure). Written to
-     * assets/&lt;ns&gt;/ponder/; delete the file to regenerate.
+     * Ponder scene schematics: a 5x5 base plate and the blocks each scene in
+     * CCPonderScenes animates. The console is empty (scenes mount their own
+     * parts) with its low edge to the north, where Ponder's camera sits.
+     * Written to assets/&lt;ns&gt;/ponder/; delete a file to regenerate it.
      */
     @Test
-    void generatePonderSchematic() throws IOException {
-        Path target = repoRoot().resolve(Path.of("src", "main", "resources", "assets", "create_controlling",
-                "ponder", "control_panel.nbt"));
-        if (Files.exists(target))
-            return;
-        Files.createDirectories(target.getParent());
+    void generatePonderSchematics() throws IOException {
+        // Building: a console on a pedestal, dressed as freshly crafted
+        PonderSchematic building = new PonderSchematic();
+        building.block(2, 1, 2, "create:brass_casing");
+        building.console(2, 2, 2, "andesite");
+        building.write("control_panel");
 
-        net.minecraft.SharedConstants.tryDetectVersion();
-        net.minecraft.server.Bootstrap.bootStrap();
-        dev.mccastle91.createcontrolling.panel.element.PanelElements.init();
-        var registries = net.minecraft.data.registries.VanillaRegistries.createLookup();
+        // Linking: a lamp under a receiving link, and a lever beside a transmitting one
+        PonderSchematic linking = new PonderSchematic();
+        linking.block(2, 1, 1, "create:brass_casing");
+        linking.console(2, 2, 1, "brass");
+        linking.block(0, 1, 3, "minecraft:redstone_lamp", "lit", "false");
+        linking.block(0, 2, 3, "create:redstone_link", "facing", "up", "receiver", "true", "powered", "false");
+        linking.block(4, 1, 3, "create:redstone_link", "facing", "up", "receiver", "false", "powered", "false");
+        linking.block(4, 1, 2, "minecraft:lever", "face", "floor", "facing", "north", "powered", "false");
+        linking.write("control_panel_linking");
 
-        var layout = new dev.mccastle91.createcontrolling.panel.PanelLayout();
-        var label = PanelElements.LABEL.create();
-        label.setText("BOILER");
-        label.setPos(1, 1);
-        layout.addElement(label);
-        var needle = PanelElements.NEEDLE_METER.create();
-        needle.setPos(1, 2.5f);
-        layout.addElement(needle);
-        var nixie = PanelElements.NIXIE.create();
-        nixie.setPos(8.5f, 2.5f);
-        layout.addElement(nixie);
-        var knob = PanelElements.KNOB.create();
-        knob.setPos(1, 8.5f);
-        knob.setValue(8);
-        layout.addElement(knob);
-        var toggle = PanelElements.TOGGLE_SWITCH.create();
-        toggle.setPos(6, 9);
-        toggle.setOn(true);
-        layout.addElement(toggle);
-        var covered = PanelElements.COVERED_SWITCH.create();
-        covered.setPos(9, 8.5f);
-        covered.setColor(net.minecraft.world.item.DyeColor.RED);
-        layout.addElement(covered);
-        var lamp = PanelElements.LAMP.create();
-        lamp.setPos(13, 9);
-        layout.addElement(lamp);
-        var lamp2 = PanelElements.LAMP.create();
-        lamp2.setPos(13, 12.5f);
-        lamp2.setColor(net.minecraft.world.item.DyeColor.LIME);
-        layout.addElement(lamp2);
-        var slider = PanelElements.SLIDER_H.create();
-        slider.setPos(1, 13);
-        slider.setValue(5);
-        layout.addElement(slider);
+        // Display Links: a link reading a Cuckoo Clock
+        PonderSchematic display = new PonderSchematic();
+        display.block(2, 1, 1, "create:brass_casing");
+        display.console(2, 2, 1, "brass");
+        display.block(1, 1, 3, "create:cuckoo_clock", "facing", "north");
+        display.block(1, 2, 3, "create:display_link", "facing", "up", "powered", "false");
+        display.write("control_panel_display");
+    }
 
-        CompoundTag panelNbt = new CompoundTag();
-        panelNbt.putString("id", "create_controlling:control_panel");
-        panelNbt.put("Layout", layout.save(registries));
-        panelNbt.put("Shape", dev.mccastle91.createcontrolling.panel.ConsoleShape.DEFAULT.save());
-        panelNbt.putString("Casing", dev.mccastle91.createcontrolling.panel.ConsoleCasing.BRASS.id());
+    /** A structure template under construction: a checkered 5x5 floor plus whatever is added. */
+    private static final class PonderSchematic {
 
-        CompoundTag root = new CompoundTag();
-        root.put("size", intList(5, 2, 5));
-        root.put("entities", new ListTag());
+        private static final int SIZE = 5;
 
-        ListTag palette = new ListTag();
-        CompoundTag casing = new CompoundTag();
-        casing.putString("Name", "create:brass_casing");
-        palette.add(casing);
-        CompoundTag panelState = new CompoundTag();
-        panelState.putString("Name", "create_controlling:control_panel");
-        CompoundTag properties = new CompoundTag();
-        properties.putString("face", "floor");
-        properties.putString("facing", "north");
-        panelState.put("Properties", properties);
-        palette.add(panelState);
-        root.put("palette", palette);
+        private final ListTag palette = new ListTag();
+        private final ListTag blocks = new ListTag();
 
-        ListTag blocks = new ListTag();
-        CompoundTag casingBlock = new CompoundTag();
-        casingBlock.put("pos", intList(2, 0, 2));
-        casingBlock.putInt("state", 0);
-        blocks.add(casingBlock);
-        CompoundTag panelBlock = new CompoundTag();
-        panelBlock.put("pos", intList(2, 1, 2));
-        panelBlock.putInt("state", 1);
-        panelBlock.put("nbt", panelNbt);
-        blocks.add(panelBlock);
-        root.put("blocks", blocks);
-        root.putInt("DataVersion", DATA_VERSION_1_21_1);
+        PonderSchematic() {
+            for (int x = 0; x < SIZE; x++)
+                for (int z = 0; z < SIZE; z++)
+                    block(x, 0, z, (x + z) % 2 == 0 ? "minecraft:white_concrete" : "minecraft:snow_block");
+        }
 
-        NbtIo.writeCompressed(root, target);
+        /** Adds a block; {@code properties} are name/value pairs. Returns its entry, for block-entity data. */
+        CompoundTag block(int x, int y, int z, String name, String... properties) {
+            CompoundTag state = new CompoundTag();
+            state.putString("Name", name);
+            if (properties.length > 0) {
+                CompoundTag values = new CompoundTag();
+                for (int i = 0; i < properties.length; i += 2)
+                    values.putString(properties[i], properties[i + 1]);
+                state.put("Properties", values);
+            }
+            int index = palette.indexOf(state);
+            if (index < 0) {
+                index = palette.size();
+                palette.add(state);
+            }
+            CompoundTag block = new CompoundTag();
+            block.put("pos", intList(x, y, z));
+            block.putInt("state", index);
+            blocks.add(block);
+            return block;
+        }
+
+        void console(int x, int y, int z, String casing) {
+            CompoundTag nbt = new CompoundTag();
+            nbt.putString("id", "create_controlling:control_panel");
+            nbt.put("Shape", dev.mccastle91.createcontrolling.panel.ConsoleShape.DEFAULT.save());
+            nbt.putString("Casing", casing);
+            block(x, y, z, "create_controlling:control_panel", "face", "floor", "facing", "south").put("nbt", nbt);
+        }
+
+        void write(String name) throws IOException {
+            Path target = repoRoot().resolve(Path.of("src", "main", "resources", "assets", "create_controlling",
+                    "ponder", name + ".nbt"));
+            if (Files.exists(target))
+                return;
+            Files.createDirectories(target.getParent());
+            CompoundTag root = new CompoundTag();
+            root.put("size", intList(SIZE, 3, SIZE));
+            root.put("entities", new ListTag());
+            root.put("palette", palette);
+            root.put("blocks", blocks);
+            root.putInt("DataVersion", DATA_VERSION_1_21_1);
+            NbtIo.writeCompressed(root, target);
+        }
     }
 }
