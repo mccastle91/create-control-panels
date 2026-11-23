@@ -154,7 +154,7 @@ The designer's window, its colours, the parts' fixed colours (nixie glow, gauge 
 
 ## Translations
 
-- French (`fr_fr`): antonincosnefroylev-ux ([issue #4](https://github.com/mccastle91/create-control-panels/issues/4)). Lines added to the mod since then show in English until they are translated.
+- French (`fr_fr`): antonincosnefroylev-ux ([issue #4](https://github.com/mccastle91/create-control-panels/issues/4)). The 36 lines the mod has gained since then were machine-translated and await a French speaker's review.
 
 A label that is longer than its button in another language is drawn smaller to fit, down to 60% of its size, and cut short with "…" past that. To add a language, copy `assets/create_controlling/lang/en_us.json` and translate the values; the palette names (`gui.create_controlling.add.*`) have the least room, about nine letters at full size.
 
