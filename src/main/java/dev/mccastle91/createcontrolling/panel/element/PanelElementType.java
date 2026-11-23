@@ -13,7 +13,8 @@ import java.util.function.Function;
  * Sizes are in pixels of the 16×16 px console face; {@code height} is how far
  * the part stands off the face, used for click rays and selection shapes.
  * A string-keyed registry rather than a Minecraft one: types are plain data
- * shared verbatim by client and server.
+ * shared verbatim by client and server. The mod's own ids are bare words;
+ * other mods register theirs as {@code modid:name} through {@code api.ConsoleApi}.
  */
 public final class PanelElementType<T extends PanelElement> {
 
@@ -56,6 +57,14 @@ public final class PanelElementType<T extends PanelElement> {
 
     public String id() {
         return id;
+    }
+
+    /**
+     * The id as it appears in translation keys: an add-on's {@code modid:name}
+     * reads {@code modid.name} there ({@code gui.create_controlling.element.modid.name}).
+     */
+    public String langId() {
+        return id.replace(':', '.');
     }
 
     /** Footprint along the face's horizontal axis, in px. */

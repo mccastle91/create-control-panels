@@ -285,4 +285,32 @@ public abstract class PanelElement {
     /** Client-side application of a synced {@link #displayStrength()}. */
     public void applyDisplayStrength(int strength) {
     }
+
+    // --- Hooks for parts the designer and integrations don't know (add-ons) ----
+
+    /**
+     * Settings the designer shows for this part when it is selected, built
+     * from its current state (it is asked every frame). The mod's own parts
+     * have their controls built into the designer and return none.
+     */
+    public List<dev.mccastle91.createcontrolling.api.PartOption> options() {
+        return List.of();
+    }
+
+    /**
+     * Server side: sets one of the {@link #options()} (or any other key an
+     * add-on sends). Clamp the value here; never trust it. Returns true if
+     * the key is this part's, whether or not anything changed. What it
+     * changes must be written by {@link #saveOptions}.
+     */
+    public boolean setOption(String key, int value) {
+        return false;
+    }
+
+    /**
+     * Adds this part's own fields to what integrations list about it (a
+     * computer's {@code getComponents()}): plain strings, numbers and booleans.
+     */
+    public void describe(java.util.Map<String, Object> out) {
+    }
 }

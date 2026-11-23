@@ -3,6 +3,9 @@ package dev.mccastle91.createcontrolling.client;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import dev.mccastle91.createcontrolling.item.PanelBlueprintItem;
+import dev.mccastle91.createcontrolling.api.PartOption;
+import dev.mccastle91.createcontrolling.api.client.ComponentRenderer;
+import dev.mccastle91.createcontrolling.api.client.ConsoleClientApi;
 import dev.mccastle91.createcontrolling.panel.ComponentCosts;
 import dev.mccastle91.createcontrolling.panel.ConsoleCasing;
 import dev.mccastle91.createcontrolling.panel.ConsoleShape;
@@ -169,6 +172,19 @@ public class PanelDesignerScreen extends Screen {
     private Button clearMaterialButton;
     private final List<Button> shapeOnly = new ArrayList<>();
 
+    /** How many palette buttons the column holds: two per 16 px row down the face's height. */
+    private static final int PALETTE_SLOTS = 2 * (CANVAS / 16);
+    /** With more component types than the column holds (add-ons), the palette turns pages. */
+    private int palettePage;
+    private final List<Button> paletteNav = new ArrayList<>();
+
+    /** Rows for the options a part lists itself (see PanelElement.options): parts from other mods. */
+    private static final int OPTION_ROWS = 4;
+    private final ThemedButton[] optionToggle = new ThemedButton[OPTION_ROWS];
+    private final ThemedButton[] optionLess = new ThemedButton[OPTION_ROWS];
+    private final ThemedButton[] optionMore = new ThemedButton[OPTION_ROWS];
+    private int optionRowY;
+
     public PanelDesignerScreen(BlockPos panelPos) {
         super(Component.translatable("gui.create_controlling.designer"));
         this.panelPos = panelPos;
@@ -276,12 +292,28 @@ public class PanelDesignerScreen extends Screen {
         footerY = canvasY + CANVAS + PAD;
 
         // Palette: one add-button per component, cost in the tooltip
+        List<PanelElementType<?>> types = new ArrayList<>(PanelElementType.all());
+        // the last row gives way to the page buttons when there are pages to turn
+        int perPage = types.size() > PALETTE_SLOTS ? PALETTE_SLOTS - 2 : PALETTE_SLOTS;
+        int pages = Math.max(1, (types.size() + perPage - 1) / perPage);
+        palettePage = Mth.clamp(palettePage, 0, pages - 1);
+        paletteNav.clear();
+        if (pages > 1) {
+            int navY = canvasY + (PALETTE_SLOTS / 2 - 1) * 16;
+            Button back = button(Component.literal("<"), b -> turnPalette(-1), paletteX, navY, 58);
+            Button on = button(Component.literal(">"), b -> turnPalette(1), paletteX + 60, navY, 58);
+            back.active = palettePage > 0;
+            on.active = palettePage < pages - 1;
+            paletteNav.add(back);
+            paletteNav.add(on);
+        }
         int index = 0;
-        for (PanelElementType<?> type : PanelElementType.all()) {
+        for (PanelElementType<?> type : types.subList(palettePage * perPage,
+                Math.min(types.size(), (palettePage + 1) * perPage))) {
             String id = type.id();
             // a board is nearly as wide as the face: it starts centred, with even margins
             float addX = type == PanelElements.DISPLAY_BOARD ? (PanelElement.FACE_SIZE - type.width()) / 2 : 6;
-            palette.add(button(Component.translatable("gui.create_controlling.add." + id), b -> sendAdd(id, addX),
+            palette.add(button(Component.translatable("gui.create_controlling.add." + type.langId()), b -> sendAdd(id, addX),
                     paletteX + (index % 2) * 60, canvasY + (index / 2) * 16, 58).tooltip(costTooltip(type)));
             paletteTypes.add(type);
             index++;
@@ -331,6 +363,13 @@ public class PanelDesignerScreen extends Screen {
         invertButton = button(Component.empty(), b -> toggleLampInverted(), sideX, y + 16, COLUMN - 2)
                 .tooltip(Component.translatable("gui.create_controlling.lamp_inverted.tooltip"));
         limitRowY = y + 16;
+        optionRowY = y + 16;
+        for (int i = 0; i < OPTION_ROWS; i++) {
+            int row = i, rowY = optionRowY + i * 16;
+            optionToggle[i] = button(Component.empty(), b -> sendPartOption(row, true), sideX, rowY, COLUMN - 2);
+            optionLess[i] = button(Component.literal("-"), b -> sendPartOption(row, false), sideX, rowY, 14);
+            optionMore[i] = button(Component.literal("+"), b -> sendPartOption(row, true), sideX + COLUMN - 16, rowY, 14);
+        }
         limitButtons(limitRowY, "min");
         limitButtons(limitRowY + 16, "max");
         pulseOnly.add(button(Component.translatable("gui.create_controlling.pulse_less"), b -> adjustPulse(-5), sideX, y + 16, 58));
@@ -405,7 +444,7 @@ public class PanelDesignerScreen extends Screen {
      * as "have/need", red with none, yellow with some, green with enough.
      */
     private Component costTooltip(PanelElementType<?> type) {
-        MutableComponent text = Component.translatable("gui.create_controlling.element." + type.id()).copy();
+        MutableComponent text = Component.translatable("gui.create_controlling.element." + type.langId()).copy();
         List<ComponentCosts.Cost> cost = ComponentCosts.costOf(type);
         text.append("\n").append(Component.translatable("gui.create_controlling.cost"));
         if (cost.isEmpty())
@@ -583,6 +622,25 @@ public class PanelDesignerScreen extends Screen {
         tag.putString("Key", key);
         valueWriter.accept(tag);
         send(tag);
+    }
+
+    /** A click on one of the rows a part's own options fill: flips a toggle, or steps a stepper down or up. */
+    private void sendPartOption(int row, boolean up) {
+        PanelElement element = selected();
+        if (element == null)
+            return;
+        List<PartOption> options = element.options();
+        if (row >= options.size())
+            return;
+        PartOption option = options.get(row);
+        int next = option.next(up);
+        if (next != option.value())
+            sendOption(option.key(), tag -> tag.putInt("Value", next));
+    }
+
+    private void turnPalette(int by) {
+        palettePage += by;
+        rebuildWidgets();
     }
 
     private void toggleLampInverted() {
@@ -1010,6 +1068,10 @@ public class PanelDesignerScreen extends Screen {
 
     /** A flat swatch for each component: its colour, brightened when active. */
     private static int fillOf(PanelElement element) {
+        ComponentRenderer<PanelElement> custom = ConsoleClientApi.rendererFor(element.type());
+        int own = custom == null ? 0 : custom.designerColor(element);
+        if (own != 0)
+            return own;
         boolean active = element instanceof LampElement lamp ? lamp.brightness() > 0
                 : element.displayStrength() > 0 || element.transmittedStrength() > 0;
         if (element instanceof ColorableElement colorable)
@@ -1072,7 +1134,7 @@ public class PanelDesignerScreen extends Screen {
         }
 
         if (element != null) {
-            String header = Component.translatable("gui.create_controlling.element." + element.type().id()).getString();
+            String header = Component.translatable("gui.create_controlling.element." + element.type().langId()).getString();
             if (element instanceof ButtonElement button)
                 header += "  " + button.pulseTicks() + "t";
             drawFitted(graphics, header, sideX, infoY + 5, COLUMN - 2 - ThemedButton.ICON_SIZE - 3, StyleColor.TEXT.argb());
@@ -1081,8 +1143,13 @@ public class PanelDesignerScreen extends Screen {
                         sideX, freqLabelY, theme.accent);
                 renderFrequencySlots(graphics, element, mouseX, mouseY);
             }
+            List<PartOption> options = element.options();
+            for (int row = 0; row < OPTION_ROWS && row < options.size(); row++)
+                if (options.get(row).kind() == PartOption.Kind.STEPPER)
+                    graphics.drawCenteredString(font, options.get(row).label(), sideX + (COLUMN - 2) / 2,
+                            optionRowY + row * 16 + 3, StyleColor.TEXT.argb());
             if (element instanceof ColorableElement || element instanceof LabelElement
-                    || element instanceof ReadoutElement)
+                    || element instanceof ReadoutElement || !options.isEmpty())
                 graphics.drawString(font, Component.translatable("gui.create_controlling.options"),
                         sideX, optionsY, theme.accent);
             if (element instanceof AnalogElement analog) {
@@ -1276,6 +1343,26 @@ public class PanelDesignerScreen extends Screen {
 
     private void updateVisibility(PanelBlockEntity panel, PanelElement element) {
         palette.forEach(w -> w.visible = true);
+        paletteNav.forEach(w -> w.visible = true);
+        List<PartOption> options = element == null ? List.of() : element.options();
+        for (int i = 0; i < OPTION_ROWS; i++) {
+            if (optionToggle[i] == null)
+                continue;
+            PartOption option = i < options.size() ? options.get(i) : null;
+            boolean toggle = option != null && option.kind() == PartOption.Kind.TOGGLE;
+            boolean stepper = option != null && option.kind() == PartOption.Kind.STEPPER;
+            optionToggle[i].visible = toggle;
+            optionLess[i].visible = stepper;
+            optionMore[i].visible = stepper;
+            if (toggle) {
+                optionToggle[i].setMessage(option.label());
+                optionToggle[i].setGreen(option.value() != 0);
+            }
+            if (stepper) {
+                optionLess[i].active = option.value() > option.min();
+                optionMore[i].active = option.value() < option.max();
+            }
+        }
         boolean isLabel = element instanceof LabelElement;
         selectionOnly.forEach(w -> w.visible = element != null);
         colorOnly.forEach(w -> w.visible = element instanceof ColorableElement);
@@ -1341,6 +1428,11 @@ public class PanelDesignerScreen extends Screen {
     /** A hint of what each swatch is: a dot, a bar, a needle line. */
     private void drawGlyph(GuiGraphics graphics, PanelElement e, int x0, int y0, int x1, int y1) {
         int cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        ComponentRenderer<PanelElement> custom = ConsoleClientApi.rendererFor(e.type());
+        if (custom != null) {
+            custom.designerGlyph(e, graphics, x0, y0, x1, y1);
+            return;
+        }
         if (e instanceof AnalogElement analog) {
             int fill = Math.round((x1 - x0 - 4) * analog.value() / 15f);
             graphics.fill(x0 + 2, y1 - 3, x0 + 2 + fill, y1 - 2, StyleColor.PART_MARK_LIGHT.argb());

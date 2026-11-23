@@ -169,6 +169,7 @@ public final class ConsolePeripheral implements IPeripheral {
             }
             if (element instanceof dev.mccastle91.createcontrolling.panel.element.LampElement lamp)
                 entry.put("inverted", lamp.inverted());
+            element.describe(entry);
             entry.put("frequency", ConsoleGroup.frequencyTable(element.frequency()));
             entry.put("x", element.x());
             entry.put("y", element.y());

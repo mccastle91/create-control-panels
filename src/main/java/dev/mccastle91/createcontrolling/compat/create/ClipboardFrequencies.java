@@ -117,7 +117,7 @@ public final class ClipboardFrequencies {
 
     private static void tell(Player player, String key, PanelElement element) {
         player.displayClientMessage(Component.translatable(key,
-                        Component.translatable("gui.create_controlling.element." + element.type().id())
+                        Component.translatable("gui.create_controlling.element." + element.type().langId())
                                 .withStyle(ChatFormatting.WHITE))
                 .withStyle(ChatFormatting.GREEN), true);
     }

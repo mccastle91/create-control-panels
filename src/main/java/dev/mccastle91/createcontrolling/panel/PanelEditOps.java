@@ -231,6 +231,9 @@ public final class PanelEditOps {
 
     private static void applyOption(PanelElement element, CompoundTag op) {
         String key = op.getString("Key");
+        // a part's own options first (add-on parts; the mod's own claim none)
+        if (element.setOption(key, op.getInt("Value")))
+            return;
         if (element instanceof ColorableElement colorable && key.equals("color"))
             colorable.setColor(DyeColor.byName(op.getString("Value"), colorable.color()));
         else if (element instanceof ButtonElement button && key.equals("pulse_ticks"))

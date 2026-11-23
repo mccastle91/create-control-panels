@@ -1,6 +1,9 @@
 package dev.mccastle91.createcontrolling.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import dev.mccastle91.createcontrolling.api.client.ComponentRenderer;
+import dev.mccastle91.createcontrolling.api.client.ConsoleClientApi;
+import dev.mccastle91.createcontrolling.api.client.PartRenderContext;
 import dev.mccastle91.createcontrolling.panel.PanelBlock;
 import dev.mccastle91.createcontrolling.panel.PanelBlockEntity;
 import dev.mccastle91.createcontrolling.panel.PanelFaceGeometry;
@@ -84,10 +87,25 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         ComponentPainter p = new ComponentPainter(face, poseStack.last().pose(), buffers);
         Font font = Minecraft.getInstance().font;
 
+        PartRenderContext context = null;
         for (PanelElement element : panel.getLayout().elements()) {
             p.push();
             p.translate(element.x(), element.y(), 0);
             float w = element.width(), d = element.depth(), h = element.height();
+            // a renderer registered through the API draws the part, its own or one of ours
+            ComponentRenderer<PanelElement> custom = ConsoleClientApi.rendererFor(element.type());
+            if (custom != null) {
+                if (context == null)
+                    context = new PartRenderContext(p, panel, font, light, brass, iron, component, hanging, onWall, partialTick);
+                try {
+                    custom.render(element, context);
+                } catch (RuntimeException e) {
+                    complain(element, e);
+                }
+                // whatever the renderer left pushed, the next part starts clean
+                p.reset();
+                continue;
+            }
             if (element instanceof LabelElement label)
                 label(p, font, label);
             else if (element instanceof CoveredSwitchElement covered)
@@ -116,8 +134,20 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
                 nixieStrip(p, font, panel, strip);
             else if (element instanceof DisplayBoardElement board)
                 displayBoard(p, font, panel, board);
+            else if (element.type().id().indexOf(':') >= 0)
+                // another mod's part with no renderer registered: a plain plate, so it can be seen and clicked
+                p.box(0, 0, 0, w, d, Math.max(0.25f, h), iron, 0xFFFFFFFF, light);
             p.pop();
         }
+    }
+
+    private static final java.util.Set<String> COMPLAINED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** A renderer that throws is reported once per component type, not once per frame. */
+    private static void complain(PanelElement element, RuntimeException e) {
+        if (COMPLAINED.add(element.type().id()))
+            dev.mccastle91.createcontrolling.CreateControlling.LOGGER.error(
+                    "The renderer for console component '{}' failed; it is skipped", element.type().id(), e);
     }
 
     private static int color(ColorableElement element) {

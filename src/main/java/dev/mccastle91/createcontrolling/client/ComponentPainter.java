@@ -68,6 +68,13 @@ public final class ComponentPainter {
         local = stack.pop();
     }
 
+    /** Back to the face's own frame and solid drawing, whatever was pushed: between parts drawn by other code. */
+    public void reset() {
+        stack.clear();
+        local = new Matrix4f();
+        renderType = RenderType.solid();
+    }
+
     public void translate(float x, float y, float z) {
         local.translate(x, y, z);
     }

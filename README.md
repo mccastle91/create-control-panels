@@ -129,6 +129,33 @@ With [Drive-By-Sable](https://modrinth.com/mod/drive-by-sable) installed (NeoFor
 
 This is built against Drive-By-Sable r2.1.0. It uses that mod's internal classes, since it publishes no API, so a later Drive-By-Sable update may need a matching update here. The original Drive-By-Wire and its own Sable port are not supported.
 
+## Config
+
+`config/create_controlling-client.toml` (each player's own):
+
+| Option | Default | What it does |
+|---|---|---|
+| `analogPopup` | `false` | Holding use on a knob or slider opens a small dial window to drag in, instead of moving the part on the console |
+| `designerPreview` | `true` | Draws the console in 3D beside the Console Designer when there is room |
+| `partSounds` | `true` | Whether you hear buttons, switches and knobs being worked. Other players still hear them. |
+
+`<world>/serverconfig/create_controlling-server.toml` (the world's rules, sent to everyone who joins):
+
+| Option | Default | What it does |
+|---|---|---|
+| `maxElementsPerPanel` | `64` | Most components one console can carry |
+| `maxPulseTicks` | `200` | Longest button pulse the designer can set |
+| `componentsCostMaterials` | `true` | `false` makes every component free, in survival too. Parts paid for earlier still give their items back. |
+| `sneakWrenchOpensDesigner` | `false` | `true` makes sneak + wrench open the Console Designer instead of picking the console up. Break the console to pick it up; it keeps its design. |
+
+## Resource packs
+
+The designer's window, its colours, the parts' fixed colours (nixie glow, gauge needles and so on), the face plates and the parts' sounds can all be changed by a resource pack, with no config change. [docs/resource-packs.md](docs/resource-packs.md) lists every texture, colour key and sound.
+
+## For other mods
+
+Add-ons can register their own console components, with a cost, designer options and a renderer, and any mod can read and work the consoles in a world. See [docs/api.md](docs/api.md).
+
 ## Layout
 
 One source tree, built twice with [Stonecutter](https://stonecutter.kikugie.dev/):

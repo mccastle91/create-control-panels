@@ -72,7 +72,8 @@ public final class CableChannels {
         if (known != null)
             return known;
         StringBuilder name = new StringBuilder();
-        for (String word : id.split("_")) {
+        // another mod's part ("modid:key_switch") is named by what follows its namespace
+        for (String word : id.substring(id.indexOf(':') + 1).split("_")) {
             if (word.isEmpty())
                 continue;
             if (name.length() > 0)

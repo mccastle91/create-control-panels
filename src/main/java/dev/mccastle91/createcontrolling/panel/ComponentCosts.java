@@ -69,7 +69,7 @@ public final class ComponentCosts {
     /*private static final String ANY_DYE = "#forge:dyes";
     *///?}
 
-    private static final Map<String, List<Cost>> COSTS = new HashMap<>();
+    private static final Map<String, List<Cost>> COSTS = new java.util.concurrent.ConcurrentHashMap<>();
 
     static {
         cost(PanelElements.BUTTON, "#minecraft:wooden_buttons", 1, "minecraft:glowstone_dust", 1);
@@ -99,6 +99,11 @@ public final class ComponentCosts {
         List<Cost> lines = new ArrayList<>();
         for (int i = 0; i < keyCountPairs.length; i += 2)
             lines.add(new Cost((String) keyCountPairs[i], (Integer) keyCountPairs[i + 1]));
+        COSTS.put(type.id(), List.copyOf(lines));
+    }
+
+    /** Sets (or replaces) what a component type costs; other mods reach this through {@code api.ConsoleApi}. */
+    public static void setCost(PanelElementType<?> type, List<Cost> lines) {
         COSTS.put(type.id(), List.copyOf(lines));
     }
 

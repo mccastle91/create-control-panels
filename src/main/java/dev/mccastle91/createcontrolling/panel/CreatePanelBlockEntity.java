@@ -93,7 +93,7 @@ public class CreatePanelBlockEntity extends PanelBlockEntity implements IHaveGog
             int strength = transmitter ? element.transmittedStrength() : element.displayStrength();
             MutableComponent line = Component.literal(transmitter ? "→ " : "← ")
                     .withStyle(transmitter ? ChatFormatting.GOLD : ChatFormatting.AQUA)
-                    .append(Component.translatable("gui.create_controlling.element." + element.type().id())
+                    .append(Component.translatable("gui.create_controlling.element." + element.type().langId())
                             .withStyle(ChatFormatting.GRAY))
                     .append(Component.literal(" " + strength).withStyle(ChatFormatting.WHITE));
 

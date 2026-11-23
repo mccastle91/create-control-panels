@@ -18,6 +18,19 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Inverted lamps: lit without a signal, dimmer as it rises | Author | A toggle on Lamp and Big Lamp in the designer. |
 | Dyeable face plate on every kind of console | Author, CF (verdis) | Right-click with a dye; gray dye is the standard plate. Faces in other materials (verdis suggested concrete) are not part of this. |
 
+### Added on branch `dev-0.2.8` (2026-11-23), not merged, not seen in-game
+
+| Feature | Source | Notes |
+|---|---|---|
+| Designer that resource packs can restyle | CF (HappyMeek) and others | Window parts are textures, per casing theme; text and line colours are in `console_style.json`. See `docs/resource-packs.md`. |
+| Part colours a pack can change (nixie glow, needles, markings, the outline) | Author | Same `console_style.json`. |
+| Part sounds a pack can replace | Author | `create_controlling:part.*` sound events, with subtitles. |
+| Designer fully translatable | GH #4 | The last hard-coded labels are lang keys. The French file from the issue is still not in the repo. |
+| Config: sneak + wrench opens the designer | GH #6 | Server option `sneakWrenchOpensDesigner`; it replaces picking the console up. |
+| Config: free components | Author | Server option `componentsCostMaterials`. |
+| Config: designer 3D preview on/off, part sounds on/off | Author | Client options `designerPreview`, `partSounds`. |
+| Add-on API, version 1 | Author | Components with cost, options and renderer; reading and working consoles. See `docs/api.md`. |
+
 ## Planned for the main mod
 
 | Feature | Source | Notes |
@@ -25,8 +38,8 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Goggles overlay redesign, with a per-console off switch | Earlier list, CF (glitchtechscience) | The overlay is switched off since 0.2.5. |
 | Icon palette in the designer | Earlier list | Deferred from the 0.2.6 reskin. |
 | Small animations (button press, lever swing) | Earlier list | Keep them simple. |
-| Config option: open the designer with sneak + wrench | GH #6 | Sneak + wrench picks the console up today, so the option has to move or replace that. Author: not the first request, will look into it. |
-| Translations: ship `fr_fr`, make the designer translatable | GH #4 | The French file is attached to the issue and not yet in the repo. `PanelDesignerScreen` still has 12 hard-coded English labels, which is why the designer stayed English. Author offered a smaller-text option for longer languages. |
+| Translations: ship `fr_fr` | GH #4 | The French file is attached to the issue and not yet in the repo. The designer is translatable since the `dev-0.2.8` branch. Author offered a smaller-text option for longer languages. |
+| Component costs from data packs | Follow-up to the 0.2.8 config work | Today costs are fixed in code, with one switch to make everything free. |
 | Replace the AI-made banner and logo | CF (user_dmeww750ra5gvaze) | Author said these two are still to be replaced. |
 
 ## Requested, not decided
@@ -34,7 +47,6 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Feature | Source | Notes |
 |---|---|---|
 | Original Drive-By-Wire and its Sable port | CF and YouTube (scaleshapes) | 0.2.7 supports Drive-By-Sable only, on 1.21.1. The requester asked for both. |
-| Designer textures that resource packs can restyle | CF (HappyMeek) | The designer is drawn from code colours (`CasingTheme`), so a pack has nothing to override. |
 | Trim chosen per component | Earlier note | Left out when trim started following the casing. |
 | Stop marks for Min/Max on the analog lever | Earlier note | Knobs and sliders have them; the lever doesn't. |
 | Ponder scene for the copycat console and for cables | Earlier note | Scenes don't mention either yet. |
@@ -46,7 +58,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Security | Key and lock with unique copyable keys; per-component "locked" or "bypass"; select all / none; CC functions such as `isLocked()` and `getKeyId()`. A key model and texture were contributed on the issue. | GH #3 |
 | Security | Wall cabinet: a console set into the wall behind single or double doors. The author asked back whether mounted, embedded, or both; no answer yet. | GH #5 |
 | Security | Key switch component | Earlier list (deferred) |
-| Extended components | A wide variety of extra switches, levers and so on | Author's reply on GH #3 ("a lot of requests") |
+| Extended components | A wide variety of extra switches, levers and so on. The add-on API (`docs/api.md`) is what these would build on. | Author's reply on GH #3 ("a lot of requests") |
 | CC: Tweaked companion | Console parts specific to computers: monitors, keyboards and the like | Earlier decision (2026-11-18) |
 
 ## Parked until existing features are polished
