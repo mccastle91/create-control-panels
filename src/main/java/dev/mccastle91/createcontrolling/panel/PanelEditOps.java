@@ -41,6 +41,9 @@ public final class PanelEditOps {
     /** The console's own name, which computers can find it by. */
     public static final String OP_SET_NAME = "set_name";
 
+    /** A blueprint only: wipes the design it holds. */
+    public static final String OP_CLEAR = "clear";
+
     /** A copycat console gives its copied block back and goes bare again. */
     public static final String OP_CLEAR_MATERIAL = "clear_material";
 
@@ -71,6 +74,26 @@ public final class PanelEditOps {
         }
         PanelLayout layout = panel.getLayout();
         boolean changed = switch (op.getString(KEY_OP)) {
+            case OP_ADJUST -> {
+                PanelElement element = elementFor(layout, op);
+                yield element != null && element.scroll(op.getInt("Delta"));
+            }
+            case OP_SET_SHAPE -> panel.setShape(
+                    ConsoleShape.of(op.getFloat("Angle"), op.getFloat("Front"), op.getBoolean("Reversed")));
+            default -> applyToLayout(layout, op, registries, payer);
+        };
+        if (changed)
+            panel.markLayoutChanged();
+        return changed;
+    }
+
+    /**
+     * The edits that only touch the design: add, move, delete, set a
+     * frequency, set an option. They work on any layout, so a blueprint is
+     * drawn with the same ops as a console. Returns true if the layout changed.
+     */
+    public static boolean applyToLayout(PanelLayout layout, CompoundTag op, HolderLookup.Provider registries, CostPayer payer) {
+        return switch (op.getString(KEY_OP)) {
             case OP_ADD -> add(layout, op, payer);
             case OP_MOVE -> move(layout, op);
             case OP_DELETE -> op.hasUUID("Id") && layout.removeElement(op.getUUID("Id")).map(removed -> {
@@ -87,17 +110,8 @@ public final class PanelEditOps {
                         : FrequencyPair.of(current.first(), stack));
             });
             case OP_SET_OPTION -> setOption(layout, op);
-            case OP_ADJUST -> {
-                PanelElement element = elementFor(layout, op);
-                yield element != null && element.scroll(op.getInt("Delta"));
-            }
-            case OP_SET_SHAPE -> panel.setShape(
-                    ConsoleShape.of(op.getFloat("Angle"), op.getFloat("Front"), op.getBoolean("Reversed")));
             default -> false;
         };
-        if (changed)
-            panel.markLayoutChanged();
-        return changed;
     }
 
     private static boolean add(PanelLayout layout, CompoundTag op, CostPayer payer) {

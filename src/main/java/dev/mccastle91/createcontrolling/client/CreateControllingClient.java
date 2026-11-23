@@ -2,6 +2,8 @@ package dev.mccastle91.createcontrolling.client;
 
 import dev.mccastle91.createcontrolling.client.model.ConsoleBakedModel;
 import dev.mccastle91.createcontrolling.compat.ponder.CCPonderPlugin;
+import dev.mccastle91.createcontrolling.item.PanelBlueprintItem;
+import dev.mccastle91.createcontrolling.util.McCompat;
 import dev.mccastle91.createcontrolling.network.CCNetwork;
 import dev.mccastle91.createcontrolling.panel.ConsoleCasing;
 import dev.mccastle91.createcontrolling.panel.PanelBlock;
@@ -19,6 +21,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 //? if neoforge {
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
@@ -33,6 +36,7 @@ import net.minecraftforge.client.event.RegisterColorHandlersEvent;
 import net.minecraftforge.client.event.RenderHighlightEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 *///?}
 
 import java.util.Map;
@@ -46,6 +50,11 @@ public final class CreateControllingClient {
     public static void init(IEventBus modEventBus) {
         CCClientHooks.OPEN_DESIGNER = pos -> Minecraft.getInstance().setScreen(new PanelDesignerScreen(pos));
         CCClientHooks.SEND_EDIT = CCNetwork::sendEditToServer;
+        CCClientHooks.OPEN_BLUEPRINT = hand -> Minecraft.getInstance().setScreen(new PanelDesignerScreen(hand));
+        CCClientHooks.SEND_BLUEPRINT_EDIT = CCNetwork::sendBlueprintEditToServer;
+        CCClientHooks.CLIENT_PLAYER = () -> Minecraft.getInstance().player;
+        CCClientHooks.SHIFT_DOWN = net.minecraft.client.gui.screens.Screen::hasShiftDown;
+        modEventBus.addListener(CreateControllingClient::clientSetup);
         modEventBus.addListener(CreateControllingClient::registerRenderers);
         modEventBus.addListener(CreateControllingClient::swapConsoleModels);
         modEventBus.addListener(CreateControllingClient::registerBlockColors);
@@ -59,6 +68,14 @@ public final class CreateControllingClient {
         MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onHighlight);
         *///?}
         PonderIndex.addPlugin(new CCPonderPlugin());
+    }
+
+    /** The blueprint's icon shows whether it holds a design: its item model switches on this property. */
+    private static void clientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(
+                CCContent.PANEL_BLUEPRINT.get(),
+                McCompat.id(dev.mccastle91.createcontrolling.CreateControlling.MOD_ID, "filled"),
+                (stack, level, entity, seed) -> PanelBlueprintItem.partCount(stack) > 0 ? 1f : 0f));
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {

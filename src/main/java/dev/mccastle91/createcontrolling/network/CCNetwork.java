@@ -3,6 +3,7 @@ package dev.mccastle91.createcontrolling.network;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 //? if neoforge {
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -35,10 +36,19 @@ public final class CCNetwork {
                     if (context.player() instanceof ServerPlayer player)
                         payload.handle(player);
                 }));
+        event.registrar(VERSION).playToServer(BlueprintEditPayload.TYPE, BlueprintEditPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player)
+                        payload.handle(player);
+                }));
     }
 
     public static void sendEditToServer(BlockPos pos, CompoundTag op) {
         PacketDistributor.sendToServer(new PanelEditPayload(pos, op));
+    }
+
+    public static void sendBlueprintEditToServer(InteractionHand hand, CompoundTag op) {
+        PacketDistributor.sendToServer(new BlueprintEditPayload(hand, op));
     }
     //?} else {
     /*private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
@@ -54,10 +64,23 @@ public final class CCNetwork {
                         payload.handle(player);
                 })
                 .add();
+        CHANNEL.messageBuilder(BlueprintEditPayload.class, 1, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(BlueprintEditPayload::write)
+                .decoder(BlueprintEditPayload::read)
+                .consumerMainThread((payload, context) -> {
+                    ServerPlayer player = context.get().getSender();
+                    if (player != null)
+                        payload.handle(player);
+                })
+                .add();
     }
 
     public static void sendEditToServer(BlockPos pos, CompoundTag op) {
         CHANNEL.sendToServer(new PanelEditPayload(pos, op));
+    }
+
+    public static void sendBlueprintEditToServer(InteractionHand hand, CompoundTag op) {
+        CHANNEL.sendToServer(new BlueprintEditPayload(hand, op));
     }
     *///?}
 }

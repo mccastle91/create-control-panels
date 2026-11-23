@@ -2,9 +2,11 @@ package dev.mccastle91.createcontrolling.client;
 
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
+import dev.mccastle91.createcontrolling.item.PanelBlueprintItem;
 import dev.mccastle91.createcontrolling.panel.ComponentCosts;
 import dev.mccastle91.createcontrolling.panel.ConsoleCasing;
 import dev.mccastle91.createcontrolling.panel.ConsoleShape;
+import dev.mccastle91.createcontrolling.panel.MaterialList;
 import dev.mccastle91.createcontrolling.panel.PanelBlockEntity;
 import dev.mccastle91.createcontrolling.panel.PanelEditOps;
 import dev.mccastle91.createcontrolling.panel.PanelLayout;
@@ -24,6 +26,7 @@ import dev.mccastle91.createcontrolling.panel.element.ReadoutElement;
 import dev.mccastle91.createcontrolling.panel.element.ReceiverElement;
 import dev.mccastle91.createcontrolling.panel.element.SwitchElement;
 import dev.mccastle91.createcontrolling.util.McCompat;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -37,6 +40,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock;
@@ -56,6 +60,11 @@ import java.util.UUID;
  * coloured after the console's casing. Palette (with costs) on the left, the
  * face in the middle, the selection on the right; the console's own shape in
  * the footer bar, and the console itself beside the window where there is room.
+ *
+ * Opened on a Console Blueprint instead ({@link #PanelDesignerScreen(InteractionHand)})
+ * it is the same screen with no console behind it: the design is read from
+ * the held item, edits go to that item, nothing is paid for, and what belongs
+ * to a console alone (its shape, its name, its copied block) is left out.
  */
 public class PanelDesignerScreen extends Screen {
 
@@ -81,7 +90,12 @@ public class PanelDesignerScreen extends Screen {
     private static final int[] FREQ_COLORS = { 0xFF97333B, 0xFF5371C6 };
     private static final int[] FREQ_COLORS_HOVER = { 0xFFC4505A, 0xFF7E98E0 };
 
+    /** The console being designed, or null when the screen is open on a blueprint. */
     private final BlockPos panelPos;
+    /** The hand holding the blueprint being drawn on, or null when the screen is open on a console. */
+    private final InteractionHand blueprintHand;
+    /** The blueprint's design, as last read off the held item (see {@link #tick}). */
+    private PanelLayout blueprintLayout = new PanelLayout();
     private UUID selectedId;
 
     private int windowX;
@@ -122,6 +136,12 @@ public class PanelDesignerScreen extends Screen {
     private boolean dragMoved;
 
     private final List<Button> palette = new ArrayList<>();
+    /** The component each palette button adds, in the same order. */
+    private final List<PanelElementType<?>> paletteTypes = new ArrayList<>();
+    /** What the palette's cost colours were last built from; they are rebuilt when it changes. */
+    private int costSignature;
+    /** On a blueprint: wipes the drawing. Null on a console. */
+    private Button clearButton;
     private final List<Button> selectionOnly = new ArrayList<>();
     private final List<Button> colorOnly = new ArrayList<>();
     private final List<Button> pulseOnly = new ArrayList<>();
@@ -151,16 +171,52 @@ public class PanelDesignerScreen extends Screen {
     public PanelDesignerScreen(BlockPos panelPos) {
         super(Component.translatable("gui.create_controlling.designer"));
         this.panelPos = panelPos;
+        this.blueprintHand = null;
+    }
+
+    /** The designer on the blueprint held in {@code hand}. */
+    public PanelDesignerScreen(InteractionHand hand) {
+        super(Component.translatable("gui.create_controlling.blueprint_designer"));
+        this.panelPos = null;
+        this.blueprintHand = hand;
+    }
+
+    private boolean onBlueprint() {
+        return blueprintHand != null;
+    }
+
+    /** Reads the design off the held blueprint; false if that hand no longer holds one. */
+    private boolean readBlueprint() {
+        if (minecraft == null || minecraft.player == null)
+            return false;
+        ItemStack stack = minecraft.player.getItemInHand(blueprintHand);
+        if (!(stack.getItem() instanceof PanelBlueprintItem))
+            return false;
+        blueprintLayout = PanelBlueprintItem.design(stack, minecraft.player.level().registryAccess());
+        return true;
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        // the server answers each edit with a new stack in the hand: the drawing is whatever it holds now
+        if (onBlueprint() && !readBlueprint()) {
+            onClose();
+            return;
+        }
+        refreshCosts();
     }
 
     private PanelBlockEntity panel() {
-        if (minecraft != null && minecraft.level != null
+        if (panelPos != null && minecraft != null && minecraft.level != null
                 && minecraft.level.getBlockEntity(panelPos) instanceof PanelBlockEntity panel)
             return panel;
         return null;
     }
 
     private CasingTheme theme() {
+        if (onBlueprint())
+            return CasingTheme.BLUEPRINT;
         PanelBlockEntity panel = panel();
         return CasingTheme.of(panel == null ? ConsoleCasing.DEFAULT : panel.casing());
     }
@@ -170,6 +226,8 @@ public class PanelDesignerScreen extends Screen {
     }
 
     private PanelLayout layout() {
+        if (onBlueprint())
+            return blueprintLayout;
         PanelBlockEntity panel = panel();
         return panel == null ? null : panel.getLayout();
     }
@@ -190,6 +248,9 @@ public class PanelDesignerScreen extends Screen {
     @Override
     protected void init() {
         palette.clear();
+        paletteTypes.clear();
+        if (onBlueprint())
+            readBlueprint();
         selectionOnly.clear();
         colorOnly.clear();
         pulseOnly.clear();
@@ -203,7 +264,7 @@ public class PanelDesignerScreen extends Screen {
         nameOnly.clear();
 
         // the console is shown beside the window, which moves over to make room for it
-        previewShown = width - WINDOW_WIDTH >= PREVIEW_ROOM + 8;
+        previewShown = !onBlueprint() && width - WINDOW_WIDTH >= PREVIEW_ROOM + 8;
         windowX = (width - WINDOW_WIDTH - (previewShown ? PREVIEW_ROOM : 0)) / 2;
         windowY = Math.max(2, (height - WINDOW_HEIGHT) / 2);
         int paletteX = windowX + PAD;
@@ -220,20 +281,30 @@ public class PanelDesignerScreen extends Screen {
             float addX = type == PanelElements.DISPLAY_BOARD ? (PanelElement.FACE_SIZE - type.width()) / 2 : 6;
             palette.add(button(Component.translatable("gui.create_controlling.add." + id), b -> sendAdd(id, addX),
                     paletteX + (index % 2) * 60, canvasY + (index / 2) * 16, 58).tooltip(costTooltip(type)));
+            paletteTypes.add(type);
             index++;
         }
+        costSignature = costSignatureNow();
 
         // Console shape, in the footer: front height under the palette, angle under the face
         int shapeY = footerY + (ConsoleGui.FOOTER_HEIGHT - 14) / 2;
         frontRowY = shapeY;
-        shapeOnly.add(button(Component.literal("-"), b -> sendFront(-0.5f), paletteX, shapeY, 14));
-        shapeOnly.add(button(Component.literal("+"), b -> sendFront(0.5f), paletteX + COLUMN - 16, shapeY, 14));
-        angleSlider = addRenderableWidget(new AngleSlider(canvasX, shapeY, CANVAS, 14));
-        // a wall console can raise either edge: one more button swaps which
+        angleSlider = null;
         slopeButton = null;
-        if (isWall())
-            slopeButton = button(Component.empty(), b -> sendSlopeSwap(), sideX, shapeY, COLUMN - 2 - 24)
-                    .tooltip(Component.translatable("gui.create_controlling.raised_edge.tooltip"));
+        clearButton = null;
+        if (onBlueprint()) {
+            // a drawing has no shape of its own: its footer wipes it instead
+            clearButton = button(Component.translatable("gui.create_controlling.blueprint_clear"), b -> sendClear(),
+                    paletteX, shapeY, 58).tooltip(Component.translatable("gui.create_controlling.blueprint_clear.tooltip"));
+        } else {
+            shapeOnly.add(button(Component.literal("-"), b -> sendFront(-0.5f), paletteX, shapeY, 14));
+            shapeOnly.add(button(Component.literal("+"), b -> sendFront(0.5f), paletteX + COLUMN - 16, shapeY, 14));
+            angleSlider = addRenderableWidget(new AngleSlider(canvasX, shapeY, CANVAS, 14));
+            // a wall console can raise either edge: one more button swaps which
+            if (isWall())
+                slopeButton = button(Component.empty(), b -> sendSlopeSwap(), sideX, shapeY, COLUMN - 2 - 24)
+                        .tooltip(Component.translatable("gui.create_controlling.raised_edge.tooltip"));
+        }
         // edits apply as they are made, so the tick only closes, as on Create's menus
         addRenderableWidget(new ThemedButton(windowX + WINDOW_WIDTH - 6 - ThemedButton.ICON_SIZE,
                 footerY + (ConsoleGui.FOOTER_HEIGHT - ThemedButton.ICON_SIZE) / 2, AllIcons.I_CONFIRM,
@@ -291,7 +362,11 @@ public class PanelDesignerScreen extends Screen {
                 .tooltip(Component.translatable("gui.create_controlling.wrap.tooltip"));
         labelOnly.add(wrapButton);
 
-        // With nothing selected, the same spot names the console itself
+        // With nothing selected, the same spot names the console itself; a drawing has no name
+        nameBox = null;
+        clearMaterialButton = null;
+        if (onBlueprint())
+            return;
         nameBox = new EditBox(font, sideX + 4, y + 3, COLUMN - 2 - 8, 10, Component.translatable("gui.create_controlling.console_name"));
         nameBox.setBordered(false);
         nameBox.setMaxLength(PanelBlockEntity.MAX_NAME_LENGTH);
@@ -302,7 +377,6 @@ public class PanelDesignerScreen extends Screen {
         nameOnly.add(button(Component.translatable("gui.create_controlling.set_name"), b -> sendName(), sideX, y + 16, 58)
                 .tooltip(Component.translatable("gui.create_controlling.set_name.tooltip")));
         // ...and, on a copycat console, takes the copied block off again
-        clearMaterialButton = null;
         if (current != null && current.casing() == ConsoleCasing.COPYCAT) {
             clearMaterialButton = button(Component.translatable("gui.create_controlling.clear_material"),
                     b -> send(op(PanelEditOps.OP_CLEAR_MATERIAL)), sideX + 60, y + 16, 58)
@@ -322,20 +396,50 @@ public class PanelDesignerScreen extends Screen {
         group.add(button(Component.literal("+"), b -> adjustLine(row, 1), sideX + COLUMN - 16, y, 14));
     }
 
-    private static Component costTooltip(PanelElementType<?> type) {
+    /**
+     * A palette button's tooltip: the part's name, then each item it costs
+     * as "have/need", red with none, yellow with some, green with enough.
+     */
+    private Component costTooltip(PanelElementType<?> type) {
         MutableComponent text = Component.translatable("gui.create_controlling.element." + type.id()).copy();
         List<ComponentCosts.Cost> cost = ComponentCosts.costOf(type);
         text.append("\n").append(Component.translatable("gui.create_controlling.cost"));
         if (cost.isEmpty())
             text.append(" ").append(Component.translatable("gui.create_controlling.free"));
         for (ComponentCosts.Cost line : cost)
-            text.append("\n  " + line.count() + "× ").append(line.name());
+            text.append("\n  ").append(MaterialList.line(line, minecraft == null ? null : minecraft.player));
+        if (onBlueprint())
+            text.append("\n").append(Component.translatable("gui.create_controlling.cost_on_paste")
+                    .withStyle(ChatFormatting.GRAY));
         return text;
+    }
+
+    private int costSignatureNow() {
+        List<ComponentCosts.Cost> all = new ArrayList<>();
+        for (PanelElementType<?> type : paletteTypes)
+            all.addAll(ComponentCosts.costOf(type));
+        return MaterialList.signature(all, minecraft == null ? null : minecraft.player);
+    }
+
+    /** Rebuilds the palette's tooltips when what the player holds has changed (a part was just paid for). */
+    private void refreshCosts() {
+        int now = costSignatureNow();
+        if (now == costSignature)
+            return;
+        costSignature = now;
+        for (int i = 0; i < palette.size() && i < paletteTypes.size(); i++)
+            if (palette.get(i) instanceof ThemedButton button)
+                button.tooltip(costTooltip(paletteTypes.get(i)));
     }
 
     // --- Edit ops ------------------------------------------------------------------
 
     private void send(CompoundTag op) {
+        if (onBlueprint()) {
+            if (CCClientHooks.SEND_BLUEPRINT_EDIT != null)
+                CCClientHooks.SEND_BLUEPRINT_EDIT.accept(blueprintHand, op);
+            return;
+        }
         if (CCClientHooks.SEND_EDIT != null)
             CCClientHooks.SEND_EDIT.accept(panelPos, op);
     }
@@ -368,6 +472,14 @@ public class PanelDesignerScreen extends Screen {
         if (selected() == null)
             return;
         send(op(PanelEditOps.OP_DELETE));
+        selectedId = null;
+    }
+
+    /** A blueprint only: wipes the drawing. */
+    private void sendClear() {
+        CompoundTag tag = new CompoundTag();
+        tag.putString(PanelEditOps.KEY_OP, PanelEditOps.OP_CLEAR);
+        send(tag);
         selectedId = null;
     }
 
@@ -934,17 +1046,20 @@ public class PanelDesignerScreen extends Screen {
             ConsoleGui.field(graphics, sideX, fieldY, COLUMN - 2, 14);
         for (Renderable widget : renderables)
             widget.render(graphics, mouseX, mouseY, partialTick);
-        if (panel == null)
+        PanelLayout layout = layout();
+        if (layout == null)
             return;
 
-        renderFace(graphics, panel);
+        renderFace(graphics, panel, layout);
 
         // Front height, between its - and + in the footer; the back follows from the angle
-        ConsoleShape shape = panel.shape();
-        Component front = Component.translatable("gui.create_controlling.front", formatPx(shape.frontHeight()));
         int frontX = windowX + PAD, frontWidth = COLUMN - 2;
-        graphics.drawString(font, front, frontX + (frontWidth - font.width(front)) / 2, frontRowY + 3,
-                ConsoleGui.PANEL_TEXT, false);
+        if (panel != null) {
+            Component front = Component.translatable("gui.create_controlling.front",
+                    formatPx(panel.shape().frontHeight()));
+            graphics.drawString(font, front, frontX + (frontWidth - font.width(front)) / 2, frontRowY + 3,
+                    ConsoleGui.PANEL_TEXT, false);
+        }
 
         if (element != null) {
             String header = Component.translatable("gui.create_controlling.element." + element.type().id()).getString();
@@ -971,6 +1086,8 @@ public class PanelDesignerScreen extends Screen {
                 for (int row = 0; row < readout.rows(); row++)
                     graphics.drawCenteredString(font, rowLabel(readout, row), sideX + (COLUMN - 2) / 2,
                             lineRowY + row * 16 + 3, 0xFFFFFF);
+        } else if (onBlueprint()) {
+            renderMaterials(graphics, layout, theme);
         } else {
             graphics.drawWordWrap(font, Component.translatable("gui.create_controlling.designer_hint"),
                     sideX, infoY + 1, COLUMN - 2, 0xDDDDDD);
@@ -978,7 +1095,7 @@ public class PanelDesignerScreen extends Screen {
                     sideX, optionsY, theme.accent);
         }
 
-        if (previewShown)
+        if (previewShown && panel != null)
             ConsolePreview.draw(graphics, panel, windowX + WINDOW_WIDTH + 4 + PREVIEW_ROOM / 2,
                     windowY + WINDOW_HEIGHT - PREVIEW_SCALE, PREVIEW_SCALE, partialTick);
 
@@ -987,21 +1104,54 @@ public class PanelDesignerScreen extends Screen {
                 renderColorPicker(graphics, element, mouseX, mouseY);
             else
                 colorTarget = null;
-        } else if (mouseX >= frontX + 14 && mouseX < frontX + frontWidth - 14
+        } else if (panel != null && mouseX >= frontX + 14 && mouseX < frontX + frontWidth - 14
                 && mouseY >= frontRowY && mouseY < frontRowY + 14) {
             graphics.renderTooltip(font, Component.translatable("gui.create_controlling.front_height",
-                    formatPx(shape.frontHeight()), formatPx(shape.backHeight())), mouseX, mouseY);
+                    formatPx(panel.shape().frontHeight()), formatPx(panel.shape().backHeight())), mouseX, mouseY);
         }
+    }
+
+    /** On a blueprint with nothing selected: how it is used, then what the drawing would cost to build. */
+    private void renderMaterials(GuiGraphics graphics, PanelLayout layout, CasingTheme theme) {
+        Component hint = Component.translatable("gui.create_controlling.blueprint_hint");
+        graphics.drawWordWrap(font, hint, sideX, infoY + 1, COLUMN - 2, 0xDDDDDD);
+        int y = infoY + 1 + font.wordWrapHeight(hint, COLUMN - 2) + 5;
+        graphics.drawString(font, Component.translatable("gui.create_controlling.materials"), sideX, y, theme.accent);
+        y += 11;
+        List<ComponentCosts.Cost> total = ComponentCosts.totalOf(layout);
+        if (total.isEmpty()) {
+            graphics.drawString(font, Component.translatable("gui.create_controlling.materials_none"), sideX, y, 0xA0A0A0);
+            return;
+        }
+        for (Component line : MaterialList.lines(total, minecraft == null ? null : minecraft.player)) {
+            drawFitted(graphics, line, sideX, y, COLUMN - 2);
+            y += 9;
+        }
+    }
+
+    /** A line of styled text at its normal size if it fits {@code maxWidth}, else squeezed to it. */
+    private void drawFitted(GuiGraphics graphics, Component text, int x, int y, int maxWidth) {
+        int textWidth = font.width(text);
+        float k = textWidth <= maxWidth ? 1f : maxWidth / (float) textWidth;
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y + (1 - k) * 4, 0);
+        graphics.pose().scale(k, k, 1f);
+        graphics.drawString(font, text, 0, 0, 0xFFFFFF);
+        graphics.pose().popPose();
     }
 
     /**
      * The face as it is on the console: the casing's own texture for the frame
      * ring, the plate inside it, at the face's scale so one texture pixel is
      * one face pixel. Then a faint 1 px grid, the components and the drag ghost.
+     * A blueprint has no console ({@code panel} is null): its face is drafting
+     * paper, a shade lighter where parts can go.
      */
-    private void renderFace(GuiGraphics graphics, PanelBlockEntity panel) {
+    private void renderFace(GuiGraphics graphics, PanelBlockEntity panel, PanelLayout layout) {
         frame(graphics, canvasX - 1, canvasY - 1, canvasX + CANVAS + 1, canvasY + CANVAS + 1, 0xFF000000);
-        if (panel.material() == null) {
+        if (panel == null) {
+            graphics.fill(canvasX, canvasY, canvasX + CANVAS, canvasY + CANVAS, 0xFF284B85);
+        } else if (panel.material() == null) {
             graphics.blit(canvasX, canvasY, 0, CANVAS, CANVAS, ComponentPainter.sprite(panel.casing().texture()));
         } else {
             // a copycat console: the top of the block it copies, in the colour that block has in the hand
@@ -1017,19 +1167,22 @@ public class PanelDesignerScreen extends Screen {
         }
         int inner = (int) (PanelElement.AREA_MIN * SCALE);
         int x0 = canvasX + inner, y0 = canvasY + inner, x1 = canvasX + CANVAS - inner, y1 = canvasY + CANVAS - inner;
-        graphics.enableScissor(x0, y0, x1, y1);
-        graphics.blit(canvasX, canvasY, 0, CANVAS, CANVAS, ComponentPainter.sprite(PLATE));
-        graphics.disableScissor();
-        // the plate sits a little below its frame
-        graphics.fill(x0, y0, x1, y0 + 1, 0x70000000);
-        graphics.fill(x0, y0, x0 + 1, y1, 0x70000000);
+        if (panel == null) {
+            graphics.fill(x0, y0, x1, y1, 0xFF335F9E);
+        } else {
+            graphics.enableScissor(x0, y0, x1, y1);
+            graphics.blit(canvasX, canvasY, 0, CANVAS, CANVAS, ComponentPainter.sprite(PLATE));
+            graphics.disableScissor();
+            // the plate sits a little below its frame
+            graphics.fill(x0, y0, x1, y0 + 1, 0x70000000);
+            graphics.fill(x0, y0, x0 + 1, y1, 0x70000000);
+        }
         for (int i = 2; i < 15; i++) {
             int line = i % 4 == 0 ? 0x30FFFFFF : 0x14FFFFFF;
             graphics.fill(canvasX + i * SCALE, y0, canvasX + i * SCALE + 1, y1, line);
             graphics.fill(x0, canvasY + i * SCALE, x1, canvasY + i * SCALE + 1, line);
         }
 
-        PanelLayout layout = panel.getLayout();
         for (PanelElement e : layout.elements()) {
             int ex0 = canvasX + Math.round(e.x() * SCALE);
             int ey0 = canvasY + Math.round(e.y() * SCALE);
@@ -1135,6 +1288,8 @@ public class PanelDesignerScreen extends Screen {
         nameOnly.forEach(w -> w.visible = element == null);
         if (clearMaterialButton != null)
             clearMaterialButton.active = panel != null && panel.material() != null;
+        if (clearButton != null)
+            clearButton.active = !blueprintLayout.isEmpty();
         if (nameBox != null)
             nameBox.visible = element == null;
         if (wrapButton != null && element instanceof LabelElement label) {

@@ -9,6 +9,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -140,8 +141,7 @@ public final class ComponentCosts {
             missing.put(element, lacking);
         }
 
-        List<Cost> charge = new ArrayList<>();
-        shortfall.forEach((key, count) -> charge.add(new Cost(key, count)));
+        List<Cost> charge = lines(shortfall);
         List<ItemStack> paid = charge.isEmpty() ? List.of() : payer.tryPay(charge);
         if (paid == null)
             return false;
@@ -157,6 +157,63 @@ public final class ComponentCosts {
         pool.removeIf(ItemStack::isEmpty);
         payer.refund(pool);
         return true;
+    }
+
+    /** What a whole design costs on an empty console: one line per item or tag, in the order first needed. */
+    public static List<Cost> totalOf(PanelLayout layout) {
+        Map<String, Integer> total = new LinkedHashMap<>();
+        for (PanelElement element : layout.elements())
+            for (Cost line : costOf(element.type()))
+                total.merge(line.key(), line.count(), Integer::sum);
+        return lines(total);
+    }
+
+    /**
+     * What pasting {@code to} over {@code from} would still charge, once the
+     * items paid for the old components are reused. Changes neither layout.
+     */
+    public static List<Cost> shortfall(PanelLayout from, PanelLayout to) {
+        List<ItemStack> pool = new ArrayList<>();
+        for (PanelElement element : from.elements())
+            for (ItemStack stack : element.paid())
+                pool.add(stack.copy());
+        Map<String, Integer> shortfall = new LinkedHashMap<>();
+        List<ItemStack> scratch = new ArrayList<>();
+        for (PanelElement element : to.elements())
+            for (Cost line : costOf(element.type())) {
+                int need = line.count() - take(pool, line, line.count(), scratch);
+                if (need > 0)
+                    shortfall.merge(line.key(), need, Integer::sum);
+            }
+        return lines(shortfall);
+    }
+
+    /** How many items matching {@code line} are in the stacks a player pays from: main inventory and hotbar. */
+    public static int held(Player player, Cost line) {
+        int have = 0;
+        for (ItemStack stack : player.getInventory().items)
+            if (line.matches(stack))
+                have += stack.getCount();
+        return have;
+    }
+
+    /** The part of {@code charge} the player can't pay: each line cut down to what is missing. Empty in creative. */
+    public static List<Cost> lacking(Player player, List<Cost> charge) {
+        List<Cost> lacking = new ArrayList<>();
+        if (player.getAbilities().instabuild)
+            return lacking;
+        for (Cost line : charge) {
+            int missing = line.count() - held(player, line);
+            if (missing > 0)
+                lacking.add(new Cost(line.key(), missing));
+        }
+        return lacking;
+    }
+
+    private static List<Cost> lines(Map<String, Integer> counts) {
+        List<Cost> lines = new ArrayList<>();
+        counts.forEach((key, count) -> lines.add(new Cost(key, count)));
+        return lines;
     }
 
     /** Moves up to {@code count} items matching {@code line} out of {@code from} into {@code into}; returns how many. */

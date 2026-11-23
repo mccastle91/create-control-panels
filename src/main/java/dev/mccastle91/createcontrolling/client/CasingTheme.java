@@ -23,7 +23,9 @@ public enum CasingTheme {
     INDUSTRIAL_IRON(0x9A9B9E, 0x6F7072, 0x2A2A2C, 0xF0F0F0, 0x3A3B3D, 0xC9CACC),
     WEATHERED_IRON(0xB39A82, 0x8A7560, 0x3A2E24, 0x2E2219, 0x43372D, 0xD0B69C),
     // the copycat console: zinc, whatever block it copies
-    COPYCAT(0xD5E3D8, 0xA9BDAF, 0x3F4D45, 0x26312B, 0x4A5650, 0xC6D8CB);
+    COPYCAT(0xD5E3D8, 0xA9BDAF, 0x3F4D45, 0x26312B, 0x4A5650, 0xC6D8CB),
+    // no casing at all: the designer opened on a blueprint, in the blue of Create's schematics
+    BLUEPRINT(0x9CC4F2, 0x5B8FD6, 0x1D3A6B, 0x12284D, 0x2F4A78, 0xA9CCF5);
 
     public final int titleHighlight;
     public final int title;

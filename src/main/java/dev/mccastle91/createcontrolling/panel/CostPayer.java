@@ -42,14 +42,9 @@ public interface CostPayer {
             @Override
             public List<ItemStack> tryPay(List<ComponentCosts.Cost> cost) {
                 var items = player.getInventory().items;
-                for (ComponentCosts.Cost need : cost) {
-                    int have = 0;
-                    for (ItemStack stack : items)
-                        if (need.matches(stack))
-                            have += stack.getCount();
-                    if (have < need.count())
+                for (ComponentCosts.Cost need : cost)
+                    if (ComponentCosts.held(player, need) < need.count())
                         return null;
-                }
                 List<ItemStack> taken = new ArrayList<>();
                 for (ComponentCosts.Cost need : cost) {
                     int remaining = need.count();
