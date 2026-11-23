@@ -18,7 +18,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Inverted lamps: lit without a signal, dimmer as it rises | Author | A toggle on Lamp and Big Lamp in the designer. |
 | Dyeable face plate on every kind of console | Author, CF (verdis) | Right-click with a dye; gray dye is the standard plate. Faces in other materials (verdis suggested concrete) are not part of this. |
 
-### Added on branch `dev-0.2.8` (2026-11-23), not merged, not seen in-game
+### Added on branch `dev-0.2.8` (2026-11-23), merged into `main` the same day after the author tested it
 
 | Feature | Source | Notes |
 |---|---|---|
