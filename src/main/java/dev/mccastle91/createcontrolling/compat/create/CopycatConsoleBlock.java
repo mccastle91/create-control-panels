@@ -43,6 +43,45 @@ public class CopycatConsoleBlock extends WrenchablePanelBlock {
         return ConsoleCasing.COPYCAT;
     }
 
+    /**
+     * What this console counts as when a neighbour's connected texture asks
+     * (the loaders' appearance hook): to another console, the block it copies,
+     * so the copies connect to each other as the real blocks would. To any
+     * other block it stays a console; a wall of real casing doesn't run its
+     * texture into a wedge.
+     */
+    @Override
+    public BlockState getAppearance(BlockState state, net.minecraft.world.level.BlockAndTintGetter level, BlockPos pos,
+                                    net.minecraft.core.Direction side, @Nullable BlockState queryState,
+                                    @Nullable BlockPos queryPos) {
+        if (queryState == null || !(queryState.getBlock() instanceof PanelBlock))
+            return state;
+        BlockState material = level.getBlockEntity(pos) instanceof PanelBlockEntity panel ? panel.material() : null;
+        return material == null ? state : material;
+    }
+
+    // A console copying a block that gives off light gives off the same light.
+
+    //? if neoforge {
+    @Override
+    public boolean hasDynamicLightEmission(BlockState state) {
+        return true;
+    }
+
+    /** The light the console's block entity noted with the chunk (see {@code PanelBlockEntity.updateMaterialLight}). */
+    @Override
+    public int getLightEmission(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        var lights = level.getAuxLightManager(pos);
+        return lights != null ? lights.getLightAt(pos) : super.getLightEmission(state, level, pos);
+    }
+    //?} else {
+    /*@Override
+    public int getLightEmission(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        BlockState material = level.getBlockEntity(pos) instanceof PanelBlockEntity panel ? panel.material() : null;
+        return material == null ? super.getLightEmission(state, level, pos) : material.getLightEmission(level, pos);
+    }
+    *///?}
+
     /** The block state the console would copy from this item, or null if it can't be copied. */
     @Nullable
     public static BlockState acceptedMaterial(Level level, BlockPos pos, ItemStack stack, BlockHitResult hit) {

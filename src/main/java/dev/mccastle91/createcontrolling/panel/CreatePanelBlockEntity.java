@@ -60,6 +60,7 @@ public class CreatePanelBlockEntity extends PanelBlockEntity implements IHaveGog
     public void onLoad() {
         super.onLoad();
         rebuildLinkPorts();
+        updateMaterialLight();
     }
 
     @Override

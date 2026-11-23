@@ -63,9 +63,21 @@ public final class ConsoleMesh {
     public record Mesh(List<BakedQuad> quads, Direction bottomSide, List<BakedQuad> bottom) {
     }
 
-    /** One texture layer of a copied block's face (grass has two on its sides), with its tint index. */
-    public record Layer(TextureAtlasSprite sprite, int tintIndex) {
+    /**
+     * One texture layer of a copied block's face (grass has two on its sides), with its tint index.
+     *
+     * @param map how the block's model lays that texture on the side (see {@link SkinMapping}),
+     *            or null to spread the whole sprite over it
+     */
+    public record Layer(TextureAtlasSprite sprite, int tintIndex, @Nullable float[] map) {
+
+        public Layer(TextureAtlasSprite sprite, int tintIndex) {
+            this(sprite, tintIndex, null);
+        }
     }
+
+    /** Lightmap value baked into a quad that glows whatever the light around it (magma, a lit lamp). */
+    private static final int FULL_BRIGHT = 0xF000F0;
 
     /** What a copied block shows on each side of the world, bottom layer first. */
     public interface Skin {
@@ -88,6 +100,8 @@ public final class ConsoleMesh {
     private Skin skin;
     /** Whether the console's own textures (plate, casing) are drawn; false leaves only the skin's. */
     private boolean ownTextures = true;
+    /** Lightmap baked into the skin's quads: {@link #FULL_BRIGHT} for a copied block that glows, else 0. */
+    private int skinLight;
     private TextureAtlasSprite plateSprite;
     /** The world side whose skin the quads being emitted take, or null for the one each faces. */
     @Nullable
@@ -101,18 +115,20 @@ public final class ConsoleMesh {
     public static Mesh build(ConsoleOrientation orientation, ConsoleShape shape, Connections c,
                              TextureAtlasSprite casing, @Nullable CTSpriteShiftEntry casingCt,
                              TextureAtlasSprite plate) {
-        return build(orientation, shape, c, casing, casingCt, plate, null, true);
+        return build(orientation, shape, c, casing, casingCt, plate, null, true, false);
     }
 
     /**
      * @param skin        the copied block's textures in place of the casing's, or null
      * @param ownTextures false to leave out everything but the skin: the pass for a
      *                    render layer only the copied block draws in
+     * @param glowingSkin true if the copied block draws at full brightness whatever the light
      */
     public static Mesh build(ConsoleOrientation orientation, ConsoleShape shape, Connections c,
                              TextureAtlasSprite casing, @Nullable CTSpriteShiftEntry casingCt,
-                             TextureAtlasSprite plate, @Nullable Skin skin, boolean ownTextures) {
+                             TextureAtlasSprite plate, @Nullable Skin skin, boolean ownTextures, boolean glowingSkin) {
         ConsoleMesh mesh = new ConsoleMesh(orientation, shape);
+        mesh.skinLight = glowingSkin ? FULL_BRIGHT : 0;
         mesh.ct = skin == null ? casingCt : null;
         mesh.skin = skin;
         mesh.ownTextures = ownTextures;
@@ -286,9 +302,28 @@ public final class ConsoleMesh {
         }
         if (skinned) {
             Direction side = skinSide != null ? skinSide : Direction.getNearest(normal.x, normal.y, normal.z);
-            for (Layer layer : skin.layers(side))
-                target.add(pack(pos, atlasU(layer.sprite(), u), atlasV(layer.sprite(), v), normal,
-                        layer.sprite(), layer.tintIndex()));
+            // the copied block's texture goes where it is on that block: each corner takes the
+            // texture px its place in the world has on that side, not the casing's layout,
+            // so the skin lines up with real blocks and across joined consoles
+            float[] du = new float[4], dv = new float[4], px = new float[2];
+            for (int i = 0; i < 4; i++) {
+                SkinMapping.defaultUv(side, pos[i].x, pos[i].y, pos[i].z, px);
+                du[i] = px[0];
+                dv[i] = px[1];
+            }
+            for (Layer layer : skin.layers(side)) {
+                float[] lu = new float[4], lv = new float[4];
+                for (int i = 0; i < 4; i++) {
+                    if (layer.map() != null) {
+                        lu[i] = SkinMapping.u(layer.map(), du[i], dv[i]);
+                        lv[i] = SkinMapping.v(layer.map(), du[i], dv[i]);
+                    } else {
+                        lu[i] = ClientCompat.spriteU(layer.sprite(), du[i]);
+                        lv[i] = ClientCompat.spriteV(layer.sprite(), dv[i]);
+                    }
+                }
+                target.add(pack(pos, lu, lv, normal, layer.sprite(), layer.tintIndex(), skinLight));
+            }
             return;
         }
         // texture px to atlas uv; connected walls are redirected into the casing's CT sheet
@@ -302,7 +337,7 @@ public final class ConsoleMesh {
             }
             sprite = ct.getTarget();
         }
-        target.add(pack(pos, u, v, normal, sprite, -1));
+        target.add(pack(pos, u, v, normal, sprite, -1, 0));
     }
 
     private static float[] atlasU(TextureAtlasSprite sprite, float[] px) {
@@ -378,7 +413,8 @@ public final class ConsoleMesh {
     }
 
     /** BLOCK layout per vertex: position xyz, colour, atlas uv, lightmap, normal — 8 ints. */
-    private static BakedQuad pack(Vec3[] pos, float[] u, float[] v, Vec3 n, TextureAtlasSprite sprite, int tintIndex) {
+    private static BakedQuad pack(Vec3[] pos, float[] u, float[] v, Vec3 n, TextureAtlasSprite sprite, int tintIndex,
+                                  int light) {
         int[] data = new int[32];
         int packedNormal = ((int) Math.round(n.x * 127) & 0xFF)
                 | (((int) Math.round(n.y * 127) & 0xFF) << 8)
@@ -391,7 +427,7 @@ public final class ConsoleMesh {
             data[base + 3] = -1;
             data[base + 4] = Float.floatToRawIntBits(u[i]);
             data[base + 5] = Float.floatToRawIntBits(v[i]);
-            data[base + 6] = 0;
+            data[base + 6] = light;
             data[base + 7] = packedNormal;
         }
         return new BakedQuad(data, tintIndex, Direction.getNearest(n.x, n.y, n.z), sprite, true);

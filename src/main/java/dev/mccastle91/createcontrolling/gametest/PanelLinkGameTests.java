@@ -687,6 +687,64 @@ public class PanelLinkGameTests {
     }
 
     /**
+     * A copycat console gives off the light of the block it copies, and to
+     * another console's connected textures it counts as that block: to any
+     * other block it stays a console.
+     */
+    @GameTest(template = EMPTY)
+    public void copycatConsoleGlowsAndConnectsAsItsBlock(GameTestHelper helper) {
+        floor(helper);
+        PanelBlockEntity panel = placeCopycat(helper, PANEL_POS);
+        BlockPos abs = helper.absolutePos(PANEL_POS);
+        //? if >=1.21 {
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.CREATIVE);
+        //?} else {
+        /*var player = helper.makeMockPlayer();
+        *///?}
+        if (helper.getBlockState(PANEL_POS).getLightEmission(helper.getLevel(), abs) != 0)
+            throw new GameTestAssertException("A bare copycat console should give off no light");
+
+        use(helper, player, PANEL_POS, new ItemStack(Items.GLOWSTONE));
+        if (panel.material() == null || !panel.material().is(Blocks.GLOWSTONE))
+            throw new GameTestAssertException("Copycat console did not take the glowstone: " + panel.material());
+        int light = helper.getBlockState(PANEL_POS).getLightEmission(helper.getLevel(), abs);
+        if (light != 15)
+            throw new GameTestAssertException("A console copying glowstone should shine like it, got light " + light);
+
+        BlockState console = helper.getBlockState(PANEL_POS);
+        BlockState toConsole = console.getAppearance(helper.getLevel(), abs, Direction.UP, console, abs.east());
+        if (!toConsole.is(Blocks.GLOWSTONE))
+            throw new GameTestAssertException("To another console it should count as the block it copies, got " + toConsole);
+        BlockState toBlock = console.getAppearance(helper.getLevel(), abs, Direction.UP,
+                Blocks.GLOWSTONE.defaultBlockState(), abs.east());
+        if (toBlock != console)
+            throw new GameTestAssertException("To a real block it should stay a console, got " + toBlock);
+
+        use(helper, player, PANEL_POS, new ItemStack(Items.STONE));
+        light = helper.getBlockState(PANEL_POS).getLightEmission(helper.getLevel(), abs);
+        if (light != 0)
+            throw new GameTestAssertException("Swapping the glowstone for stone should put the light out, got " + light);
+
+        // joined consoles answer "joined toward" for each other, and for nothing else
+        BlockPos eastPos = PANEL_POS.east();
+        placeCopycat(helper, eastPos);
+        use(helper, player, eastPos, new ItemStack(Items.STONE));
+        if (!(helper.getBlockState(PANEL_POS).getBlock() instanceof PanelBlock block))
+            throw new GameTestAssertException("Console missing");
+        BlockState joined = helper.getBlockState(PANEL_POS);
+        if (!block.joinedToward(joined, helper.getLevel(), abs, abs.east()))
+            throw new GameTestAssertException("Two consoles copying the same block side by side should be joined");
+        if (block.joinedToward(joined, helper.getLevel(), abs, abs.west())
+                || block.joinedToward(joined, helper.getLevel(), abs, abs.above())
+                || block.joinedToward(joined, helper.getLevel(), abs, abs.east(2)))
+            throw new GameTestAssertException("A console is joined only to consoles beside it");
+        use(helper, player, eastPos, new ItemStack(Items.OAK_PLANKS));
+        if (block.joinedToward(helper.getBlockState(PANEL_POS), helper.getLevel(), abs, abs.east()))
+            throw new GameTestAssertException("Consoles copying different blocks should not be joined");
+        helper.succeed();
+    }
+
+    /**
      * A dye paints the face plate: one dye is used up, the same dye again
      * changes and takes nothing, gray puts the standard plate back, and the
      * colour travels with the console item. Both kinds of console take it.

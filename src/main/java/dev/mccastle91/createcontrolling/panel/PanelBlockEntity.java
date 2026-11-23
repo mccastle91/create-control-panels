@@ -218,6 +218,25 @@ public class PanelBlockEntity extends BlockEntity {
         setChanged();
         syncToClients();
         refreshNeighbourConnections();
+        updateMaterialLight();
+    }
+
+    /**
+     * Has the world light this console as the block it copies is lit: a
+     * console copying glowstone shines like glowstone. Called on both sides
+     * whenever the copied block changes, and when the console loads. A
+     * console that copies nothing gives off no light.
+     */
+    public void updateMaterialLight() {
+        if (level == null || fixedCasing() != ConsoleCasing.COPYCAT)
+            return;
+        //? if neoforge {
+        var lights = level.getAuxLightManager(worldPosition);
+        if (lights != null)
+            lights.setLightAt(worldPosition, material == null ? 0 : material.getLightEmission(level, worldPosition));
+        //?} else {
+        /*level.getChunkSource().getLightEngine().checkBlock(worldPosition);
+        *///?}
     }
 
     /**
@@ -711,6 +730,8 @@ public class PanelBlockEntity extends BlockEntity {
             requestModelDataUpdate();
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 8);
         }
+        if (material != previousMaterial)
+            updateMaterialLight();
         // Transient element state piggybacks on update tags (never on disk)
         if (tag.contains(TAG_RUNTIME)) {
             ListTag runtime = tag.getList(TAG_RUNTIME, Tag.TAG_COMPOUND);

@@ -14,6 +14,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Blueprint shows the full material list, same colours | GH #6 | Hold Shift on the item, and in the blueprint designer's right column. |
 | Blueprint as a free design planner | GH #7 | Use the blueprint in the air to draw on it for free; sneak-click a console to build. The author kept building over a console that has parts (charging the difference) rather than empty consoles only. An empty blueprint copies; a filled one never does. |
 | Two-state blueprint icon | Author | Blank sheet when empty, a drawn console when it holds a design. |
+| Copycat console: connected textures across joined consoles, textures laid as on the copied block, light from glowing blocks | Known limits in 0.2.7 | Light and the join rule are covered by game tests; the texture work can only be judged in-game. |
 | Dyeable face plate on every kind of console | Author, CF (verdis) | Right-click with a dye; gray dye is the standard plate. Faces in other materials (verdis suggested concrete) are not part of this. |
 
 ## Planned for the main mod
@@ -35,7 +36,6 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Designer textures that resource packs can restyle | CF (HappyMeek) | The designer is drawn from code colours (`CasingTheme`), so a pack has nothing to override. |
 | Trim chosen per component | Earlier note | Left out when trim started following the casing. |
 | Stop marks for Min/Max on the analog lever | Earlier note | Knobs and sliders have them; the lever doesn't. |
-| Copycat console: connected textures, rotated-UV models, light from glowing blocks | Known limits in 0.2.7 | |
 | Ponder scene for the copycat console and for cables | Earlier note | Scenes don't mention either yet. |
 
 ## Add-on candidates (kept out of the main mod)

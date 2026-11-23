@@ -1,11 +1,13 @@
 package dev.mccastle91.createcontrolling.client.model;
 
 import com.simibubi.create.AllSpriteShifts;
+import com.simibubi.create.content.decoration.copycat.FilteredBlockAndTintGetter;
 import com.simibubi.create.foundation.block.connected.CTSpriteShiftEntry;
 import dev.mccastle91.createcontrolling.panel.ConsoleCasing;
 import dev.mccastle91.createcontrolling.panel.ConsoleOrientation;
 import dev.mccastle91.createcontrolling.panel.ConsoleShape;
 import dev.mccastle91.createcontrolling.panel.CreatePanelBlockEntity;
+import dev.mccastle91.createcontrolling.panel.PanelBlock;
 import dev.mccastle91.createcontrolling.util.McCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
@@ -24,10 +26,12 @@ import org.jetbrains.annotations.Nullable;
 import net.neoforged.neoforge.client.ChunkRenderTypeSet;
 import net.neoforged.neoforge.client.model.BakedModelWrapper;
 import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.client.model.data.ModelProperty;
 //?} else {
 /*import net.minecraftforge.client.ChunkRenderTypeSet;
 import net.minecraftforge.client.model.BakedModelWrapper;
 import net.minecraftforge.client.model.data.ModelData;
+import net.minecraftforge.client.model.data.ModelProperty;
 *///?}
 
 import java.util.EnumMap;
@@ -56,10 +60,29 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
     private static final ChunkRenderTypeSet BARE_COPYCAT = ChunkRenderTypeSet.of(RenderType.cutoutMipped());
 
     /** @param layer the render layer the mesh is for; null for all of it at once (items, plain renderers) */
+    /**
+     * @param context the copied block's own model data for this spot in the world (its connected
+     *                textures), or null if it has none. Compared by identity: it is made anew
+     *                each time the chunk is rebuilt
+     */
     private record Key(ConsoleOrientation orientation, ConsoleShape shape, ConsoleCasing casing,
                        ConsoleMesh.Connections connections, @Nullable BlockState material,
-                       @Nullable DyeColor plate, @Nullable RenderType layer) {
+                       @Nullable DyeColor plate, @Nullable RenderType layer, @Nullable ModelData context) {
     }
+
+    /**
+     * What the copied block's model was told about its surroundings: Create's
+     * connected textures (and any mod's that work through model data) read
+     * which neighbours they join from it.
+     */
+    public static final ModelProperty<ModelData> WRAPPED_DATA = new ModelProperty<>();
+
+    /**
+     * The last mesh built with a context. Such meshes can't go in the cache
+     * (every rebuild brings a new context, so it would only grow), but one
+     * rebuild asks for the same mesh once per side, back to back.
+     */
+    private final ThreadLocal<Object[]> lastWithContext = new ThreadLocal<>();
 
     private final Map<Key, ConsoleMesh.Mesh> cache = new ConcurrentHashMap<>();
     private final Map<ConsoleCasing, TextureAtlasSprite> casingSprites = new EnumMap<>(ConsoleCasing.class);
@@ -81,7 +104,19 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource rand,
                                     ModelData data, @Nullable RenderType renderType) {
-        ConsoleMesh.Mesh mesh = cache.computeIfAbsent(keyFor(state, data, renderType), this::build);
+        Key key = keyFor(state, data, renderType);
+        ConsoleMesh.Mesh mesh;
+        if (key.context() == null) {
+            mesh = cache.computeIfAbsent(key, this::build);
+        } else {
+            Object[] last = lastWithContext.get();
+            if (last != null && key.equals(last[0])) {
+                mesh = (ConsoleMesh.Mesh) last[1];
+            } else {
+                mesh = build(key);
+                lastWithContext.set(new Object[] { key, mesh });
+            }
+        }
         if (side == null)
             return mesh.quads();
         return side == mesh.bottomSide() ? mesh.bottom() : List.of();
@@ -96,8 +131,24 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
                                   BlockState state, ModelData data) {
         if (!data.has(CreatePanelBlockEntity.SHAPE_PROPERTY)
                 && level.getBlockEntity(pos) instanceof CreatePanelBlockEntity console)
-            return console.getModelData();
-        return data;
+            data = console.getModelData();
+        // a copied block is asked what it would look like here, with only the consoles
+        // this one is joined to in view: its textures then connect across them, and to nothing else
+        BlockState material = data.get(CreatePanelBlockEntity.MATERIAL_PROPERTY);
+        if (material == null || !(state.getBlock() instanceof PanelBlock block))
+            return data;
+        ModelData wrapped;
+        try {
+            wrapped = modelOf(material).getModelData(new FilteredBlockAndTintGetter(level,
+                    target -> target.equals(pos) || block.joinedToward(state, level, pos, target)),
+                    pos, material, ModelData.EMPTY);
+        } catch (RuntimeException e) {
+            // another mod's model that can't cope with being asked about a block that isn't there
+            return data;
+        }
+        if (wrapped == null || wrapped == ModelData.EMPTY)
+            return data;
+        return data.derive().with(WRAPPED_DATA, wrapped).build();
     }
 
     @Override
@@ -105,7 +156,7 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
         ChunkRenderTypeSet own = super.getRenderTypes(state, rand, data);
         BlockState material = data.get(CreatePanelBlockEntity.MATERIAL_PROPERTY);
         if (material != null)
-            return ChunkRenderTypeSet.union(own, modelOf(material).getRenderTypes(material, rand, ModelData.EMPTY));
+            return ChunkRenderTypeSet.union(own, modelOf(material).getRenderTypes(material, rand, wrappedData(data)));
         ConsoleCasing casing = data.get(CreatePanelBlockEntity.CASING_PROPERTY);
         if ((casing == null ? defaultCasing : casing) == ConsoleCasing.COPYCAT)
             return ChunkRenderTypeSet.union(own, BARE_COPYCAT);
@@ -137,7 +188,7 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
     private Key keyFor(@Nullable BlockState state, ModelData data, @Nullable RenderType layer) {
         if (state == null) // item
             return new Key(ConsoleOrientation.of(AttachFace.FLOOR, Direction.NORTH), ConsoleShape.DEFAULT,
-                    defaultCasing, ConsoleMesh.Connections.NONE, null, null, null);
+                    defaultCasing, ConsoleMesh.Connections.NONE, null, null, null, null);
         ConsoleShape shape = data.get(CreatePanelBlockEntity.SHAPE_PROPERTY);
         ConsoleCasing casing = data.get(CreatePanelBlockEntity.CASING_PROPERTY);
         if (shape == null)
@@ -145,7 +196,7 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
                     state.getValue(net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock.FACE));
         return new Key(ConsoleOrientation.of(state), shape, casing == null ? defaultCasing : casing,
                 ConsoleMesh.Connections.of(state), data.get(CreatePanelBlockEntity.MATERIAL_PROPERTY),
-                data.get(CreatePanelBlockEntity.PLATE_PROPERTY), layer);
+                data.get(CreatePanelBlockEntity.PLATE_PROPERTY), layer, data.get(WRAPPED_DATA));
     }
 
     private ConsoleMesh.Mesh build(Key key) {
@@ -153,8 +204,12 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
         boolean own = key.layer() == null || key.layer() == RenderType.solid();
         BlockState material = key.material();
         ConsoleMesh.Skin skin = null;
+        boolean glowing = false;
         if (material != null) {
-            skin = side -> layers(material, side, key.layer());
+            ModelData context = key.context() == null ? ModelData.EMPTY : key.context();
+            skin = side -> layers(material, side, key.layer(), context);
+            glowing = material.emissiveRendering(net.minecraft.world.level.EmptyBlockGetter.INSTANCE,
+                    net.minecraft.core.BlockPos.ZERO);
         } else if (key.casing() == ConsoleCasing.COPYCAT) {
             // bare: Create's copycat frame, cut out so its gaps are open like a copycat's
             boolean cutout = key.layer() == null || key.layer() == RenderType.cutoutMipped();
@@ -163,38 +218,55 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
             skin = side -> frame;
         }
         return ConsoleMesh.build(key.orientation(), key.shape(), key.connections(),
-                casingSprite(key.casing()), connectedTexture(key.casing()), plateSprite(key.plate()), skin, own);
+                casingSprite(key.casing()), connectedTexture(key.casing()), plateSprite(key.plate()), skin, own,
+                glowing);
     }
 
     private static BakedModel modelOf(BlockState material) {
         return Minecraft.getInstance().getBlockRenderer().getBlockModel(material);
     }
 
+    private static ModelData wrappedData(ModelData data) {
+        ModelData wrapped = data.get(WRAPPED_DATA);
+        return wrapped == null ? ModelData.EMPTY : wrapped;
+    }
+
     /**
-     * What a block shows on one side in one render layer: the sprite and tint
-     * of each quad its model has there. A model with nothing on that side
-     * (not a plain cube) lends its particle texture, in its first layer only.
+     * What a block shows on one side in one render layer: the sprite, tint
+     * and texture mapping of each quad its model has there. A model with
+     * nothing on that side (not a plain cube) lends its particle texture, in
+     * its first layer only.
      */
     public static List<ConsoleMesh.Layer> layers(BlockState material, Direction side, @Nullable RenderType layer) {
+        return layers(material, side, layer, ModelData.EMPTY);
+    }
+
+    /** @param context the block's own model data for the spot it is shown at (see {@link #WRAPPED_DATA}) */
+    public static List<ConsoleMesh.Layer> layers(BlockState material, Direction side, @Nullable RenderType layer,
+                                                 ModelData context) {
         BakedModel model = modelOf(material);
         RandomSource rand = RandomSource.create(42L);
         // plain models hand out the same quads whatever layer is asked for, so
         // ask only for the layers the block draws in — or glass comes out solid
-        if (layer != null && !model.getRenderTypes(material, rand, ModelData.EMPTY).contains(layer))
+        if (layer != null && !model.getRenderTypes(material, rand, context).contains(layer))
             return List.of();
         List<ConsoleMesh.Layer> layers = new java.util.ArrayList<>();
-        for (BakedQuad quad : model.getQuads(material, side, rand, ModelData.EMPTY, layer))
-            layers.add(new ConsoleMesh.Layer(quad.getSprite(), quad.getTintIndex()));
+        for (BakedQuad quad : model.getQuads(material, side, rand, context, layer))
+            layers.add(layerOf(quad, side));
         if (layers.isEmpty())
-            for (BakedQuad quad : model.getQuads(material, null, rand, ModelData.EMPTY, layer))
+            for (BakedQuad quad : model.getQuads(material, null, rand, context, layer))
                 if (quad.getDirection() == side)
-                    layers.add(new ConsoleMesh.Layer(quad.getSprite(), quad.getTintIndex()));
+                    layers.add(layerOf(quad, side));
         if (layers.isEmpty()) {
-            List<RenderType> types = model.getRenderTypes(material, rand, ModelData.EMPTY).asList();
+            List<RenderType> types = model.getRenderTypes(material, rand, context).asList();
             if (layer == null || !types.isEmpty() && types.get(0) == layer)
                 layers.add(new ConsoleMesh.Layer(model.getParticleIcon(ModelData.EMPTY), -1));
         }
         return layers;
+    }
+
+    private static ConsoleMesh.Layer layerOf(BakedQuad quad, Direction side) {
+        return new ConsoleMesh.Layer(quad.getSprite(), quad.getTintIndex(), SkinMapping.of(quad.getVertices(), side));
     }
 
     /** Create's connected-texture sheet for a casing, if it has one. */

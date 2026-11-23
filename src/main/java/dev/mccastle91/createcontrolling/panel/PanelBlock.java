@@ -182,6 +182,26 @@ public class PanelBlock extends FaceAttachedHorizontalDirectionalBlock implement
                 && materialAt(level, pos) == materialAt(level, other);
     }
 
+    /**
+     * Whether the console at {@code pos} is joined to one at {@code target}:
+     * one of its eight neighbours in its own plane, and joining it by the same
+     * rule the edge flags follow. Asked while a chunk is drawn, of whatever
+     * view of the world the renderer has.
+     */
+    public boolean joinedToward(BlockState state, BlockGetter level, BlockPos pos, BlockPos target) {
+        ConsoleOrientation orientation = ConsoleOrientation.of(state);
+        for (int mx = -1; mx <= 1; mx++)
+            for (int mz = -1; mz <= 1; mz++) {
+                if (mx == 0 && mz == 0)
+                    continue;
+                Vec3 d = orientation.rotate(new Vec3(mx, 0, mz));
+                if (target.getX() - pos.getX() == (int) Math.round(d.x) && target.getY() - pos.getY() == (int) Math.round(d.y)
+                        && target.getZ() - pos.getZ() == (int) Math.round(d.z))
+                    return joins(state, orientation, level, pos, mx, mz);
+            }
+        return false;
+    }
+
     private static final BooleanProperty[] EDGES = { CONNECT_N, CONNECT_S, CONNECT_W, CONNECT_E };
     private static final int[][] EDGE_STEPS = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } };
 
