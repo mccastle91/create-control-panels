@@ -38,6 +38,7 @@ public class PanelBlockEntity extends BlockEntity {
     public static final String TAG_LAYOUT = "Layout";
     public static final String TAG_SHAPE = "Shape";
     public static final String TAG_CASING = "Casing";
+    public static final String TAG_PLATE = "Plate";
     public static final String TAG_MATERIAL = "Material";
     public static final String TAG_MATERIAL_ITEM = "MaterialItem";
     public static final String TAG_RUNTIME = "Runtime";
@@ -54,6 +55,9 @@ public class PanelBlockEntity extends BlockEntity {
     private String name = "";
     private ConsoleShape shape = ConsoleShape.DEFAULT;
     private ConsoleCasing casing = ConsoleCasing.DEFAULT;
+    /** The dye the face plate is painted with, or null for the standard plate. */
+    @org.jetbrains.annotations.Nullable
+    private net.minecraft.world.item.DyeColor plateColor;
     /** The block a copycat console looks like, or null: only the copycat console block sets one. */
     @org.jetbrains.annotations.Nullable
     private BlockState material;
@@ -142,6 +146,26 @@ public class PanelBlockEntity extends BlockEntity {
         }
         String trimmed = clean.toString().trim();
         return trimmed.length() > MAX_NAME_LENGTH ? trimmed.substring(0, MAX_NAME_LENGTH).trim() : trimmed;
+    }
+
+    /** The dye the face plate is painted with, or null for the standard plate. */
+    @org.jetbrains.annotations.Nullable
+    public net.minecraft.world.item.DyeColor plateColor() {
+        return plateColor;
+    }
+
+    /**
+     * Paints the face plate. Gray is the standard plate's own colour, so gray
+     * dye (like null) puts the standard plate back. Returns true if the plate changed.
+     */
+    public boolean setPlateColor(@org.jetbrains.annotations.Nullable net.minecraft.world.item.DyeColor color) {
+        net.minecraft.world.item.DyeColor plate = color == net.minecraft.world.item.DyeColor.GRAY ? null : color;
+        if (plate == plateColor)
+            return false;
+        plateColor = plate;
+        setChanged();
+        syncToClients();
+        return true;
     }
 
     public void setCasing(ConsoleCasing casing) {
@@ -628,6 +652,8 @@ public class PanelBlockEntity extends BlockEntity {
         tag.put(TAG_LAYOUT, layout.save(registries));
         tag.put(TAG_SHAPE, shape.save());
         tag.putString(TAG_CASING, casing.id());
+        if (plateColor != null)
+            tag.putString(TAG_PLATE, plateColor.getName());
         if (!name.isEmpty())
             tag.putString(TAG_NAME, name);
         if (material != null) {
@@ -641,6 +667,11 @@ public class PanelBlockEntity extends BlockEntity {
         ConsoleShape previousShape = shape;
         ConsoleCasing previousCasing = casing;
         BlockState previousMaterial = material;
+        net.minecraft.world.item.DyeColor previousPlate = plateColor;
+        // every full save and update tag carries the plate's dye when it has one
+        plateColor = tag.contains(TAG_PLATE) ? net.minecraft.world.item.DyeColor.byName(tag.getString(TAG_PLATE), null) : null;
+        if (plateColor == net.minecraft.world.item.DyeColor.GRAY)
+            plateColor = null;
         if (tag.contains(TAG_SHAPE))
             shape = ConsoleShape.load(tag.getCompound(TAG_SHAPE)).forFace(attachFace(getBlockState()));
         if (tag.contains(TAG_CASING))
@@ -675,7 +706,7 @@ public class PanelBlockEntity extends BlockEntity {
             rebuildLinkPorts();
             refreshNeighbourConnections();
         } else if (level != null && (!shape.equals(previousShape) || casing != previousCasing
-                || material != previousMaterial)) {
+                || material != previousMaterial || plateColor != previousPlate)) {
             // The body is generated from this data: refresh it and re-mesh
             requestModelDataUpdate();
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 8);

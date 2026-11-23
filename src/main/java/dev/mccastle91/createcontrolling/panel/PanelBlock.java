@@ -339,7 +339,27 @@ public class PanelBlock extends FaceAttachedHorizontalDirectionalBlock implement
             PanelBlueprintItem.useOnPanel(stack, level, pos, player);
             return true;
         }
+        if (applyPlateDye(stack, level, pos, player))
+            return true;
         return applyCasing(stack, level, pos, player, hit);
+    }
+
+    /**
+     * Right-click with a dye paints the face plate that colour; gray dye puts
+     * the standard plate back. One dye is used up, unless the plate already
+     * has that colour. Returns true if the item was a dye.
+     */
+    private boolean applyPlateDye(ItemStack stack, Level level, BlockPos pos, Player player) {
+        net.minecraft.world.item.DyeColor dye = net.minecraft.world.item.DyeColor.getColor(stack);
+        if (dye == null || !(level.getBlockEntity(pos) instanceof PanelBlockEntity panel))
+            return false;
+        if (level.isClientSide || !panel.setPlateColor(dye))
+            return true;
+        level.playSound(null, pos, net.minecraft.sounds.SoundEvents.DYE_USE,
+                net.minecraft.sounds.SoundSource.BLOCKS, 1f, 1f);
+        if (!player.getAbilities().instabuild)
+            stack.shrink(1);
+        return true;
     }
 
     private InteractionResult interact(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {

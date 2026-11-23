@@ -14,12 +14,12 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Blueprint shows the full material list, same colours | GH #6 | Hold Shift on the item, and in the blueprint designer's right column. |
 | Blueprint as a free design planner | GH #7 | Use the blueprint in the air to draw on it for free; sneak-click a console to build. The author kept building over a console that has parts (charging the difference) rather than empty consoles only. An empty blueprint copies; a filled one never does. |
 | Two-state blueprint icon | Author | Blank sheet when empty, a drawn console when it holds a design. |
+| Dyeable face plate on every kind of console | Author, CF (verdis) | Right-click with a dye; gray dye is the standard plate. Faces in other materials (verdis suggested concrete) are not part of this. |
 
 ## Planned for the main mod
 
 | Feature | Source | Notes |
 |---|---|---|
-| Changeable face plate on every kind of console | Author, CF (verdis) | The author's stated next step after the copycat console. verdis: the top can't be matched to nearby blocks; suggested starting with concrete colours. |
 | Goggles overlay redesign, with a per-console off switch | Earlier list, CF (glitchtechscience) | The overlay is switched off since 0.2.5. |
 | Icon palette in the designer | Earlier list | Deferred from the 0.2.6 reskin. |
 | Small animations (button press, lever swing) | Earlier list | Keep them simple. |

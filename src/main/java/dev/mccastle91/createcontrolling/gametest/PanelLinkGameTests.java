@@ -686,6 +686,68 @@ public class PanelLinkGameTests {
         helper.succeed();
     }
 
+    /**
+     * A dye paints the face plate: one dye is used up, the same dye again
+     * changes and takes nothing, gray puts the standard plate back, and the
+     * colour travels with the console item. Both kinds of console take it.
+     */
+    @GameTest(template = EMPTY)
+    public void dyePaintsTheFacePlate(GameTestHelper helper) {
+        floor(helper);
+        PanelBlockEntity panel = placeConsole(helper, PANEL_POS);
+        panel.getLayout().addElement(PanelElements.BUTTON.create());
+        panel.markLayoutChanged();
+        if (panel.plateColor() != null)
+            throw new GameTestAssertException("A new console should have the standard plate");
+        //? if >=1.21 {
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        //?} else {
+        /*var player = helper.makeMockPlayer();
+        *///?}
+        player.getAbilities().instabuild = false;
+
+        use(helper, player, PANEL_POS, new ItemStack(Items.RED_DYE, 3));
+        if (panel.plateColor() != net.minecraft.world.item.DyeColor.RED)
+            throw new GameTestAssertException("Red dye should paint the plate red, got " + panel.plateColor());
+        if (player.getMainHandItem().getCount() != 2)
+            throw new GameTestAssertException("Painting should use one dye up, left " + player.getMainHandItem().getCount());
+        use(helper, player, PANEL_POS, player.getMainHandItem());
+        if (player.getMainHandItem().getCount() != 2)
+            throw new GameTestAssertException("The colour the plate already has should cost nothing");
+        if (panel.getLayout().elementCount() != 1)
+            throw new GameTestAssertException("Painting the plate must leave the parts alone");
+
+        // the colour is saved, and travels with the console item
+        BlockPos abs = helper.absolutePos(PANEL_POS);
+        ItemStack dropped = ItemStack.EMPTY;
+        for (ItemStack drop : net.minecraft.world.level.block.Block.getDrops(helper.getBlockState(PANEL_POS),
+                helper.getLevel(), abs, helper.getBlockEntity(PANEL_POS)))
+            if (drop.is(CCContent.CONTROL_PANEL.get().asItem()))
+                dropped = drop;
+        helper.setBlock(PANEL_POS, Blocks.AIR.defaultBlockState());
+        PanelBlockEntity restored = placeConsole(helper, PANEL_POS);
+        net.minecraft.world.item.BlockItem.updateCustomBlockEntityTag(helper.getLevel(), player, abs, dropped);
+        if (restored.plateColor() != net.minecraft.world.item.DyeColor.RED)
+            throw new GameTestAssertException("The console item lost its plate colour: " + restored.plateColor());
+
+        // gray is the standard plate
+        use(helper, player, PANEL_POS, new ItemStack(Items.GRAY_DYE));
+        if (restored.plateColor() != null)
+            throw new GameTestAssertException("Gray dye should put the standard plate back");
+        ItemStack gray = new ItemStack(Items.GRAY_DYE);
+        use(helper, player, PANEL_POS, gray);
+        if (gray.getCount() != 1)
+            throw new GameTestAssertException("Gray dye on the standard plate should cost nothing");
+
+        // a copycat console's plate is painted the same way
+        BlockPos copycatPos = PANEL_POS.offset(0, 0, 3);
+        PanelBlockEntity copycat = placeCopycat(helper, copycatPos);
+        use(helper, player, copycatPos, new ItemStack(Items.LIME_DYE));
+        if (copycat.plateColor() != net.minecraft.world.item.DyeColor.LIME || copycat.material() != null)
+            throw new GameTestAssertException("A copycat console should take a dye on its plate, not as its block");
+        helper.succeed();
+    }
+
     /** Copycat consoles join each other only while they copy the same block, and never an ordinary console. */
     @GameTest(template = EMPTY)
     public void copycatConsolesJoinBySameBlock(GameTestHelper helper) {

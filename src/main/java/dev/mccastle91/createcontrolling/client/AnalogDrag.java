@@ -94,11 +94,11 @@ public final class AnalogDrag {
         return !stack.isEmpty() && CABLE_TOOLS.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
     }
 
-    /** Blueprints, casings and Create's tools act on the console, not on the part under them. */
+    /** Blueprints, casings, dyes and Create's tools act on the console, not on the part under them. */
     private static boolean usesConsoleItself(ItemStack stack) {
         if (stack.isEmpty())
             return false;
-        if (stack.getItem() instanceof PanelBlueprintItem)
+        if (stack.getItem() instanceof PanelBlueprintItem || net.minecraft.world.item.DyeColor.getColor(stack) != null)
             return true;
         String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         return TOOLS.contains(id) || ConsoleCasing.byItemId(id) != null;

@@ -81,8 +81,6 @@ public class PanelDesignerScreen extends Screen {
     private static final int PREVIEW_SCALE = 40;
     private static final int PREVIEW_ROOM = 72;
 
-    /** The face plate's texture, as on the console itself. */
-    private static final String PLATE = "create_controlling:block/console_plate";
     /**
      * Frequency slot colours, from the two markers on Create's Redstone Link
      * texture: red for the first slot, blue for the second.
@@ -1171,7 +1169,8 @@ public class PanelDesignerScreen extends Screen {
             graphics.fill(x0, y0, x1, y1, 0xFF335F9E);
         } else {
             graphics.enableScissor(x0, y0, x1, y1);
-            graphics.blit(canvasX, canvasY, 0, CANVAS, CANVAS, ComponentPainter.sprite(PLATE));
+            graphics.blit(canvasX, canvasY, 0, CANVAS, CANVAS, ComponentPainter.sprite(
+                    dev.mccastle91.createcontrolling.client.model.ConsoleBakedModel.plateTexture(panel.plateColor())));
             graphics.disableScissor();
             // the plate sits a little below its frame
             graphics.fill(x0, y0, x1, y0 + 1, 0x70000000);

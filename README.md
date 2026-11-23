@@ -67,6 +67,7 @@ Jars land in `versions/<version>/build/libs/`. The 1.20.1 jar there is the reobf
 - **Wire it to a computer** (optional, needs [CC: Tweaked](https://tweaked.cc/)): see [Computers](#computers-cc-tweaked) below.
 - **Wire it with cables** (optional, needs [Drive-By-Sable](https://modrinth.com/mod/drive-by-sable), 1.21.1 only): see [Cables](#cables-drive-by-sable) below.
 - **Labels** never draw past their own width. Turn on **Wrap** in the designer to let one run onto up to three lines; the text box stops taking characters once the label is full. **Bar meters** come as two parts, like sliders: a horizontal one filling left to right and a vertical one filling from the bottom.
+- **Right-click a console with a dye** to paint its face plate that colour. One dye is used up. Gray dye puts the standard plate back, and it works on the Copycat Console too. The colour stays with the console when it is broken or picked up.
 - Breaking a console keeps its design.
 - A **Console Blueprint** holds a design and is a designer of its own:
   - **Use it** in the air to open the designer on the blueprint itself. Drawing there is free, and needs no console. The right-hand column lists the materials the drawing would cost, coloured like the palette, and **Clear** in the footer wipes it.

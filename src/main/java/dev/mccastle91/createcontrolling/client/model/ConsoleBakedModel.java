@@ -16,6 +16,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import org.jetbrains.annotations.Nullable;
@@ -57,12 +58,13 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
     /** @param layer the render layer the mesh is for; null for all of it at once (items, plain renderers) */
     private record Key(ConsoleOrientation orientation, ConsoleShape shape, ConsoleCasing casing,
                        ConsoleMesh.Connections connections, @Nullable BlockState material,
-                       @Nullable RenderType layer) {
+                       @Nullable DyeColor plate, @Nullable RenderType layer) {
     }
 
     private final Map<Key, ConsoleMesh.Mesh> cache = new ConcurrentHashMap<>();
     private final Map<ConsoleCasing, TextureAtlasSprite> casingSprites = new EnumMap<>(ConsoleCasing.class);
     private TextureAtlasSprite plateSprite;
+    private final Map<DyeColor, TextureAtlasSprite> dyedPlateSprites = new EnumMap<>(DyeColor.class);
     /** The casing of this model's block before its block entity says otherwise, and of its item. */
     private final ConsoleCasing defaultCasing;
 
@@ -135,14 +137,15 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
     private Key keyFor(@Nullable BlockState state, ModelData data, @Nullable RenderType layer) {
         if (state == null) // item
             return new Key(ConsoleOrientation.of(AttachFace.FLOOR, Direction.NORTH), ConsoleShape.DEFAULT,
-                    defaultCasing, ConsoleMesh.Connections.NONE, null, null);
+                    defaultCasing, ConsoleMesh.Connections.NONE, null, null, null);
         ConsoleShape shape = data.get(CreatePanelBlockEntity.SHAPE_PROPERTY);
         ConsoleCasing casing = data.get(CreatePanelBlockEntity.CASING_PROPERTY);
         if (shape == null)
             shape = ConsoleShape.defaultFor(
                     state.getValue(net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock.FACE));
         return new Key(ConsoleOrientation.of(state), shape, casing == null ? defaultCasing : casing,
-                ConsoleMesh.Connections.of(state), data.get(CreatePanelBlockEntity.MATERIAL_PROPERTY), layer);
+                ConsoleMesh.Connections.of(state), data.get(CreatePanelBlockEntity.MATERIAL_PROPERTY),
+                data.get(CreatePanelBlockEntity.PLATE_PROPERTY), layer);
     }
 
     private ConsoleMesh.Mesh build(Key key) {
@@ -160,7 +163,7 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
             skin = side -> frame;
         }
         return ConsoleMesh.build(key.orientation(), key.shape(), key.connections(),
-                casingSprite(key.casing()), connectedTexture(key.casing()), plateSprite(), skin, own);
+                casingSprite(key.casing()), connectedTexture(key.casing()), plateSprite(key.plate()), skin, own);
     }
 
     private static BakedModel modelOf(BlockState material) {
@@ -212,11 +215,26 @@ public class ConsoleBakedModel extends BakedModelWrapper<BakedModel> {
         }
     }
 
-    private TextureAtlasSprite plateSprite() {
+    /** The face plate: the standard one, or the one painted with {@code dye}. */
+    private TextureAtlasSprite plateSprite(@Nullable DyeColor dye) {
+        if (dye != null)
+            synchronized (dyedPlateSprites) {
+                return dyedPlateSprites.computeIfAbsent(dye, d -> sprite(plateTexture(d)));
+            }
         TextureAtlasSprite sprite = plateSprite;
         if (sprite == null)
             plateSprite = sprite = sprite(PLATE);
         return sprite;
+    }
+
+    /**
+     * The block-atlas texture of the face plate: one drawn per dye (see
+     * tools/plate_textures.py), and the standard plate for none or for gray.
+     */
+    public static ResourceLocation plateTexture(@Nullable DyeColor dye) {
+        if (dye == null || dye == DyeColor.GRAY)
+            return PLATE;
+        return McCompat.id("create_controlling", "block/console_plate_" + dye.getName());
     }
 
     private static TextureAtlasSprite sprite(ResourceLocation texture) {

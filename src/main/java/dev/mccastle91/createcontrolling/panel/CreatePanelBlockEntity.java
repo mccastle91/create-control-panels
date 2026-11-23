@@ -32,6 +32,7 @@ public class CreatePanelBlockEntity extends PanelBlockEntity implements IHaveGog
     public static final ModelProperty<ConsoleShape> SHAPE_PROPERTY = new ModelProperty<>();
     public static final ModelProperty<ConsoleCasing> CASING_PROPERTY = new ModelProperty<>();
     public static final ModelProperty<BlockState> MATERIAL_PROPERTY = new ModelProperty<>();
+    public static final ModelProperty<net.minecraft.world.item.DyeColor> PLATE_PROPERTY = new ModelProperty<>();
 
     private static final int MAX_GOGGLE_LINES = 8;
     /**
@@ -51,6 +52,7 @@ public class CreatePanelBlockEntity extends PanelBlockEntity implements IHaveGog
                 .with(SHAPE_PROPERTY, shape())
                 .with(CASING_PROPERTY, casing())
                 .with(MATERIAL_PROPERTY, material())
+                .with(PLATE_PROPERTY, plateColor())
                 .build();
     }
 
