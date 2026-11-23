@@ -28,6 +28,7 @@ import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RenderHighlightEvent;
+import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 import net.neoforged.neoforge.common.NeoForge;
 //?} else {
 /*import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -36,6 +37,7 @@ import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterColorHandlersEvent;
 import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RenderHighlightEvent;
+import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -65,8 +67,10 @@ public final class CreateControllingClient {
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onMouseScroll);
         NeoForge.EVENT_BUS.addListener(AnalogDrag::onUseKey);
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onHighlight);
+        NeoForge.EVENT_BUS.addListener(CreateControllingClient::onPlaySound);
         //?} else {
-        /*MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onMouseScroll);
+        /*MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onPlaySound);
+        MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onMouseScroll);
         MinecraftForge.EVENT_BUS.addListener(AnalogDrag::onUseKey);
         MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onHighlight);
         *///?}
@@ -132,6 +136,15 @@ public final class CreateControllingClient {
                 return Minecraft.getInstance().getBlockColors().getColor(panel.material(), level, pos, tintIndex);
             return -1;
         }, CCContent.COPYCAT_CONTROL_PANEL.get());
+    }
+
+    /** With part sounds switched off in the client config, the parts' sound events are dropped before they play. */
+    private static void onPlaySound(PlaySoundEvent event) {
+        if (dev.mccastle91.createcontrolling.config.CCConfig.partSounds || event.getSound() == null)
+            return;
+        net.minecraft.resources.ResourceLocation id = event.getSound().getLocation();
+        if (id.getNamespace().equals(dev.mccastle91.createcontrolling.CreateControlling.MOD_ID) && id.getPath().startsWith("part."))
+            event.setSound(null);
     }
 
     /** Consoles draw their own highlight: the aimed component, or the wedge. */

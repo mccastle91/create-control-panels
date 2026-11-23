@@ -83,6 +83,14 @@ public final class CCContent {
     public static final Supplier<ConsoleDisplayTarget> CONSOLE_DISPLAY_TARGET = REGISTRATE
             .simple("console", CreateRegistries.DISPLAY_TARGET, ConsoleDisplayTarget::new);
 
+    // One sound event per kind of part sound, so sounds.json (and any resource pack) decides what each is
+    static {
+        for (dev.mccastle91.createcontrolling.panel.element.PartSound.Kind kind
+                : dev.mccastle91.createcontrolling.panel.element.PartSound.Kind.values())
+            REGISTRATE.simple(kind.path(), net.minecraft.core.registries.Registries.SOUND_EVENT,
+                    () -> net.minecraft.sounds.SoundEvent.createVariableRangeEvent(kind.id()));
+    }
+
     private CCContent() {
     }
 

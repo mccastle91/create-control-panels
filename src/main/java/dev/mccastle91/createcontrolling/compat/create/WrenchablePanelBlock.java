@@ -11,7 +11,8 @@ import net.minecraft.world.level.block.state.BlockState;
  * presets (flat, 15°, 30°, 45°; a wall console runs through them with its top
  * edge raised, then with its bottom edge raised). Sneak-wrenching is left to
  * Create: it picks the console up into the player's inventory, design and all
- * (the drop carries it, see {@link PanelBlock#getDrops}).
+ * (the drop carries it, see {@link PanelBlock#getDrops}) — unless the server
+ * config {@code sneakWrenchOpensDesigner} gives it to the designer instead.
  */
 public class WrenchablePanelBlock extends PanelBlock implements IWrenchable {
 
@@ -25,6 +26,15 @@ public class WrenchablePanelBlock extends PanelBlock implements IWrenchable {
         return simpleCodec(WrenchablePanelBlock::new);
     }
     //?}
+
+    @Override
+    public InteractionResult onSneakWrenched(BlockState state, UseOnContext context) {
+        if (!dev.mccastle91.createcontrolling.config.CCConfig.sneakWrenchOpensDesigner)
+            return IWrenchable.super.onSneakWrenched(state, context);
+        if (context.getLevel().isClientSide && dev.mccastle91.createcontrolling.client.CCClientHooks.OPEN_DESIGNER != null)
+            dev.mccastle91.createcontrolling.client.CCClientHooks.OPEN_DESIGNER.accept(context.getClickedPos());
+        return InteractionResult.SUCCESS;
+    }
 
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {

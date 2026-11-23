@@ -1,0 +1,26 @@
+{
+  "part.button_on": {
+    "subtitle": "subtitles.create_controlling.part.button",
+    "sounds": [ { "name": "minecraft:block.stone_button.click_on", "type": "event" } ]
+  },
+  "part.button_off": {
+    "subtitle": "subtitles.create_controlling.part.button",
+    "sounds": [ { "name": "minecraft:block.stone_button.click_off", "type": "event" } ]
+  },
+  "part.lever": {
+    "subtitle": "subtitles.create_controlling.part.lever",
+    "sounds": [ { "name": "minecraft:block.lever.click", "type": "event" } ]
+  },
+  "part.lid_open": {
+    "subtitle": "subtitles.create_controlling.part.lid",
+    "sounds": [ { "name": "minecraft:block.iron_trapdoor.open", "type": "event" } ]
+  },
+  "part.lid_close": {
+    "subtitle": "subtitles.create_controlling.part.lid",
+    "sounds": [ { "name": "minecraft:block.iron_trapdoor.close", "type": "event" } ]
+  },
+  "part.detent": {
+    "subtitle": "subtitles.create_controlling.part.detent",
+    "sounds": [ { "name": "minecraft:block.lever.click", "type": "event" } ]
+  }
+}

@@ -265,7 +265,8 @@ public class PanelDesignerScreen extends Screen {
         nameOnly.clear();
 
         // the console is shown beside the window, which moves over to make room for it
-        previewShown = !onBlueprint() && width - WINDOW_WIDTH >= PREVIEW_ROOM + 8;
+        previewShown = !onBlueprint() && dev.mccastle91.createcontrolling.config.CCConfig.designerPreview
+                && width - WINDOW_WIDTH >= PREVIEW_ROOM + 8;
         windowX = (width - WINDOW_WIDTH - (previewShown ? PREVIEW_ROOM : 0)) / 2;
         windowY = Math.max(2, (height - WINDOW_HEIGHT) / 2);
         int paletteX = windowX + PAD;

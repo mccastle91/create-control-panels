@@ -102,9 +102,11 @@ public final class ComponentCosts {
         COSTS.put(type.id(), List.copyOf(lines));
     }
 
-    /** The cost lines of a component type; empty means free. */
+    /** The cost lines of a component type; empty means free (as everything is with costs switched off in the config). */
     public static List<Cost> costOf(PanelElementType<?> type) {
         List<Cost> lines = new ArrayList<>();
+        if (!dev.mccastle91.createcontrolling.config.CCConfig.componentsCostMaterials)
+            return lines;
         for (Cost line : COSTS.getOrDefault(type.id(), List.of()))
             if (line.available())
                 lines.add(line);

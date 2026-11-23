@@ -16,7 +16,6 @@ import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.Bootstrap;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -281,13 +280,13 @@ class PanelLayoutSerializationTest {
         assertEquals(null, button.takeSound(), "silent until worked");
         assertTrue(button.click(0, 0, false));
         PartSound down = button.takeSound();
-        assertEquals(SoundEvents.STONE_BUTTON_CLICK_ON, down.event(), "going down");
+        assertEquals(PartSound.Kind.BUTTON_ON, down.kind(), "going down");
         assertEquals(null, button.takeSound(), "each sound plays once");
         assertFalse(button.click(0, 0, false), "already down");
         assertEquals(null, button.takeSound(), "pressing a held button makes no new sound");
         assertFalse(button.tick());
         assertTrue(button.tick());
-        assertEquals(SoundEvents.STONE_BUTTON_CLICK_OFF, button.takeSound().event(), "coming back up");
+        assertEquals(PartSound.Kind.BUTTON_OFF, button.takeSound().kind(), "coming back up");
 
         ButtonElement large = PanelElements.LARGE_BUTTON.create();
         large.click(0, 0, false);
@@ -298,18 +297,18 @@ class PanelLayoutSerializationTest {
         PartSound on = toggle.takeSound();
         toggle.click(0, 0, false);
         PartSound off = toggle.takeSound();
-        assertEquals(SoundEvents.LEVER_CLICK, on.event());
+        assertEquals(PartSound.Kind.LEVER, on.kind());
         assertTrue(on.pitch() > off.pitch(), "on clicks higher than off, like a lever");
         assertFalse(toggle.operate(0), "already off");
         assertEquals(null, toggle.takeSound(), "no change, no sound");
 
         CoveredSwitchElement guarded = PanelElements.COVERED_SWITCH.create();
         guarded.click(CoveredSwitchElement.ZONE_LEVER, 1, 1.5f, false);
-        assertEquals(SoundEvents.IRON_TRAPDOOR_OPEN, guarded.takeSound().event(), "the guard lifting");
+        assertEquals(PartSound.Kind.LID_OPEN, guarded.takeSound().kind(), "the guard lifting");
         guarded.click(CoveredSwitchElement.ZONE_LEVER, 1, 1.5f, false);
-        assertEquals(SoundEvents.LEVER_CLICK, guarded.takeSound().event(), "the lever under it");
+        assertEquals(PartSound.Kind.LEVER, guarded.takeSound().kind(), "the lever under it");
         guarded.click(CoveredSwitchElement.ZONE_LID, 1, 0.2f, false);
-        assertEquals(SoundEvents.IRON_TRAPDOOR_CLOSE, guarded.takeSound().event(), "the guard closing");
+        assertEquals(PartSound.Kind.LID_CLOSE, guarded.takeSound().kind(), "the guard closing");
 
         KnobElement knob = PanelElements.KNOB.create();
         knob.click(0, 0, false);

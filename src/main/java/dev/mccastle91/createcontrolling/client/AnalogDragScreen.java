@@ -13,7 +13,6 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
 
@@ -157,7 +156,7 @@ public class AnalogDragScreen extends Screen {
         // a soft click per step, rising a little with the value; heard here at once,
         // while the console plays the same click to everyone else nearby
         minecraft.getSoundManager().play(
-                SimpleSoundInstance.forUI(SoundEvents.LEVER_CLICK, PartSound.detentPitch(value), PartSound.detentVolume()));
+                SimpleSoundInstance.forUI(PartSound.Kind.DETENT.event(), PartSound.detentPitch(value), PartSound.detentVolume()));
     }
 
     //? if >=1.21 {
