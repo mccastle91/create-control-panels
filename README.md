@@ -152,6 +152,12 @@ This is built against Drive-By-Sable r2.1.0. It uses that mod's internal classes
 
 The designer's window, its colours, the parts' fixed colours (nixie glow, gauge needles and so on), the face plates and the parts' sounds can all be changed by a resource pack, with no config change. [docs/resource-packs.md](docs/resource-packs.md) lists every texture, colour key and sound.
 
+## Translations
+
+- French (`fr_fr`): antonincosnefroylev-ux ([issue #4](https://github.com/mccastle91/create-control-panels/issues/4)). Lines added to the mod since then show in English until they are translated.
+
+A label that is longer than its button in another language is drawn smaller to fit, down to 60% of its size, and cut short with "…" past that. To add a language, copy `assets/create_controlling/lang/en_us.json` and translate the values; the palette names (`gui.create_controlling.add.*`) have the least room, about nine letters at full size.
+
 ## For other mods
 
 Add-ons can register their own console components, with a cost, designer options and a renderer, and any mod can read and work the consoles in a world. See [docs/api.md](docs/api.md).

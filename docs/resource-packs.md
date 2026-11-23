@@ -134,4 +134,4 @@ Each sound a part makes is its own event, so `sounds.json` in your pack can poin
 
 ## Text
 
-Every label in the designer is in `lang/en_us.json`. The palette buttons are 58 pixels wide, so their names (`gui.create_controlling.add.*`) need to stay short.
+Every label in the designer is in `lang/en_us.json`. A label too long for its button is drawn smaller to fit, down to 60% of its size, and cut short with "…" past that. The palette buttons are 58 pixels wide, so their names (`gui.create_controlling.add.*`) have the least room: about nine letters at full size, fifteen at the smallest.

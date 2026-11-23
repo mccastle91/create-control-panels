@@ -29,6 +29,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Config: sneak + wrench opens the designer | GH #6 | Server option `sneakWrenchOpensDesigner`; it replaces picking the console up. |
 | Config: free components | Author | Server option `componentsCostMaterials`. |
 | Config: designer 3D preview on/off, part sounds on/off | Author | Client options `designerPreview`, `partSounds`. |
+| Labels shrink to fit their buttons; French translation shipped | GH #4 | Added on `main` after the merge. The French file predates 0.2.7: 36 lines show in English (33 new since then, 3 left out because they described the old blueprint). Two palette names are still cut short at the smallest size ("Bnd de tubes Nixie", "Panneau d'affichage"). Not seen in-game. |
 | Add-on API, version 1 | Author | Components with cost, options and renderer; reading and working consoles. See `docs/api.md`. |
 
 ## Planned for the main mod
@@ -38,7 +39,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Goggles overlay redesign, with a per-console off switch | Earlier list, CF (glitchtechscience) | The overlay is switched off since 0.2.5. |
 | Icon palette in the designer | Earlier list | Deferred from the 0.2.6 reskin. |
 | Small animations (button press, lever swing) | Earlier list | Keep them simple. |
-| Translations: ship `fr_fr` | GH #4 | The French file is attached to the issue and not yet in the repo. The designer is translatable since the `dev-0.2.8` branch. Author offered a smaller-text option for longer languages. |
+| Translations: finish `fr_fr`, more languages | GH #4 | French ships since 0.2.8 with 36 lines still in English; ask the contributor for those and for shorter names for the two palette buttons that are cut. The author speaks English and Spanish. |
 | Component costs from data packs | Follow-up to the 0.2.8 config work | Today costs are fixed in code, with one switch to make everything free. |
 | Replace the AI-made banner and logo | CF (user_dmeww750ra5gvaze) | Author said these two are still to be replaced. |
 

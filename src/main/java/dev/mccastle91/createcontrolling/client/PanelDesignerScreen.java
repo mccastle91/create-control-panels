@@ -172,6 +172,9 @@ public class PanelDesignerScreen extends Screen {
     private Button clearMaterialButton;
     private final List<Button> shapeOnly = new ArrayList<>();
 
+    /** Room for the text between a row's - and + buttons. */
+    private static final int STEPPER_ROOM = COLUMN - 2 - 2 * 16;
+
     /** How many palette buttons the column holds: two per 16 px row down the face's height. */
     private static final int PALETTE_SLOTS = 2 * (CANVAS / 16);
     /** With more component types than the column holds (add-ons), the palette turns pages. */
@@ -1146,23 +1149,23 @@ public class PanelDesignerScreen extends Screen {
             List<PartOption> options = element.options();
             for (int row = 0; row < OPTION_ROWS && row < options.size(); row++)
                 if (options.get(row).kind() == PartOption.Kind.STEPPER)
-                    graphics.drawCenteredString(font, options.get(row).label(), sideX + (COLUMN - 2) / 2,
-                            optionRowY + row * 16 + 3, StyleColor.TEXT.argb());
+                    ConsoleGui.centeredFitted(graphics, font, options.get(row).label(), sideX + (COLUMN - 2) / 2,
+                            optionRowY + row * 16 + 3, STEPPER_ROOM, StyleColor.TEXT.argb());
             if (element instanceof ColorableElement || element instanceof LabelElement
                     || element instanceof ReadoutElement || !options.isEmpty())
                 graphics.drawString(font, Component.translatable("gui.create_controlling.options"),
                         sideX, optionsY, theme.accent);
             if (element instanceof AnalogElement analog) {
                 int middle = sideX + (COLUMN - 2) / 2;
-                graphics.drawCenteredString(font, Component.translatable("gui.create_controlling.limit.min", analog.min()),
-                        middle, limitRowY + 3, StyleColor.TEXT.argb());
-                graphics.drawCenteredString(font, Component.translatable("gui.create_controlling.limit.max", analog.max()),
-                        middle, limitRowY + 16 + 3, StyleColor.TEXT.argb());
+                ConsoleGui.centeredFitted(graphics, font, Component.translatable("gui.create_controlling.limit.min", analog.min()),
+                        middle, limitRowY + 3, STEPPER_ROOM, StyleColor.TEXT.argb());
+                ConsoleGui.centeredFitted(graphics, font, Component.translatable("gui.create_controlling.limit.max", analog.max()),
+                        middle, limitRowY + 16 + 3, STEPPER_ROOM, StyleColor.TEXT.argb());
             }
             if (element instanceof ReadoutElement readout)
                 for (int row = 0; row < readout.rows(); row++)
-                    graphics.drawCenteredString(font, rowLabel(readout, row), sideX + (COLUMN - 2) / 2,
-                            lineRowY + row * 16 + 3, StyleColor.TEXT.argb());
+                    ConsoleGui.centeredFitted(graphics, font, rowLabel(readout, row), sideX + (COLUMN - 2) / 2,
+                            lineRowY + row * 16 + 3, STEPPER_ROOM, StyleColor.TEXT.argb());
         } else if (onBlueprint()) {
             renderMaterials(graphics, layout, theme);
         } else {

@@ -19,6 +19,8 @@ public class ThemedButton extends Button {
 
     /** Create's icon buttons are this size, whatever is asked for. */
     public static final int ICON_SIZE = 18;
+    /** Room a text button keeps clear at its edges, both sides together. */
+    public static final int TEXT_MARGIN = 4;
 
     @Nullable
     private final AllIcons icon;
@@ -65,7 +67,8 @@ public class ThemedButton extends Button {
             return;
         }
         ConsoleGui.button(graphics, theme.get(), getX(), getY(), width, height, hovered, green, active);
-        graphics.drawCenteredString(Minecraft.getInstance().font, getMessage(), getX() + width / 2,
-                getY() + (height - 8) / 2, (active ? StyleColor.BUTTON_TEXT : StyleColor.BUTTON_TEXT_DISABLED).argb());
+        // a label longer than the button (in another language) is drawn smaller rather than spilling out
+        ConsoleGui.centeredFitted(graphics, Minecraft.getInstance().font, getMessage(), getX() + width / 2,
+                getY() + (height - 8) / 2, width - TEXT_MARGIN, (active ? StyleColor.BUTTON_TEXT : StyleColor.BUTTON_TEXT_DISABLED).argb());
     }
 }

@@ -133,6 +133,53 @@ public final class ConsoleGui {
         draw(graphics, theme, lit ? SLIDER_HANDLE_HOVER : SLIDER_HANDLE, x, y, width, SLIDER_HANDLE.height);
     }
 
+    // --- Text that fits ----------------------------------------------------------
+
+    /** The smallest a label is drawn: below this it is cut short instead (see {@link #fitScale}). */
+    public static final float MIN_TEXT_SCALE = 0.6f;
+
+    /**
+     * How much a line {@code textWidth} px wide is shrunk to fit {@code room}:
+     * 1 if it fits as it is, never less than {@link #MIN_TEXT_SCALE}.
+     */
+    public static float fitScale(int textWidth, int room) {
+        if (textWidth <= room || textWidth <= 0)
+            return 1f;
+        return Math.max(MIN_TEXT_SCALE, room / (float) textWidth);
+    }
+
+    /**
+     * A shadowed line centred on {@code centerX}, as {@code drawCenteredString}
+     * draws it, that never runs past {@code room} px: text too long for it (a
+     * translation, usually) is drawn smaller, and text too long even at the
+     * smallest size ends in "…". English labels all fit, so they are untouched.
+     */
+    public static void centeredFitted(GuiGraphics graphics, Font font, Component text, int centerX, int y, int room, int color) {
+        int textWidth = font.width(text);
+        if (textWidth <= room) {
+            graphics.drawCenteredString(font, text, centerX, y, color);
+            return;
+        }
+        float scale = fitScale(textWidth, room);
+        graphics.pose().pushPose();
+        // shrunk about the middle of the line, so it stays centred on its row
+        graphics.pose().translate(centerX, y + (1 - scale) * 4, 0);
+        graphics.pose().scale(scale, scale, 1f);
+        if (textWidth * scale <= room + 0.5f) {
+            graphics.drawString(font, text, -textWidth / 2, 0, color);
+        } else {
+            String cut = cutToFit(font, text.getString(), (int) (room / scale));
+            graphics.drawString(font, cut, -font.width(cut) / 2, 0, color);
+        }
+        graphics.pose().popPose();
+    }
+
+    /** {@code text} cut down to {@code width} px, the last of them an ellipsis. */
+    static String cutToFit(Font font, String text, int width) {
+        String ellipsis = "…";
+        return font.plainSubstrByWidth(text, Math.max(0, width - font.width(ellipsis))).stripTrailing() + ellipsis;
+    }
+
     // --- Nine-cut drawing -------------------------------------------------------
 
     private static void draw(GuiGraphics graphics, @Nullable CasingTheme theme, Cut cut, int x, int y, int width, int height) {
