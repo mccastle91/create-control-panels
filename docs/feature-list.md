@@ -15,6 +15,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Blueprint as a free design planner | GH #7 | Use the blueprint in the air to draw on it for free; sneak-click a console to build. The author kept building over a console that has parts (charging the difference) rather than empty consoles only. An empty blueprint copies; a filled one never does. |
 | Two-state blueprint icon | Author | Blank sheet when empty, a drawn console when it holds a design. |
 | Copycat console: connected textures across joined consoles, textures laid as on the copied block, light from glowing blocks | Known limits in 0.2.7 | Light and the join rule are covered by game tests; the texture work can only be judged in-game. |
+| Inverted lamps: lit without a signal, dimmer as it rises | Author | A toggle on Lamp and Big Lamp in the designer. |
 | Dyeable face plate on every kind of console | Author, CF (verdis) | Right-click with a dye; gray dye is the standard plate. Faces in other materials (verdis suggested concrete) are not part of this. |
 
 ## Planned for the main mod

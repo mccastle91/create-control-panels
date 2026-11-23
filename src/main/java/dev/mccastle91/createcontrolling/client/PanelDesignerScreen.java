@@ -17,6 +17,7 @@ import dev.mccastle91.createcontrolling.panel.element.ColorableElement;
 import dev.mccastle91.createcontrolling.panel.element.CoveredSwitchElement;
 import dev.mccastle91.createcontrolling.panel.element.DisplayBoardElement;
 import dev.mccastle91.createcontrolling.panel.element.LabelElement;
+import dev.mccastle91.createcontrolling.panel.element.LampElement;
 import dev.mccastle91.createcontrolling.panel.element.LatchingButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.NixieStripElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
@@ -144,6 +145,8 @@ public class PanelDesignerScreen extends Screen {
     private final List<Button> colorOnly = new ArrayList<>();
     private final List<Button> pulseOnly = new ArrayList<>();
     private ThemedButton guardButton;
+    /** Lamps: lit by a signal, or lit without one. */
+    private ThemedButton invertButton;
     /** Knobs and sliders: - and + either side of the lowest value, then of the highest. */
     private final List<Button> analogOnly = new ArrayList<>();
     private int limitRowY;
@@ -324,6 +327,8 @@ public class PanelDesignerScreen extends Screen {
         colorOnly.add(button(Component.translatable("gui.create_controlling.color"), b -> openColorPicker(ColorTarget.COMPONENT, b), sideX, y, 58));
         guardButton = button(Component.empty(), b -> toggleGuardKeepsState(), sideX, y + 16, COLUMN - 2)
                 .tooltip(Component.translatable("gui.create_controlling.guard.tooltip"));
+        invertButton = button(Component.empty(), b -> toggleLampInverted(), sideX, y + 16, COLUMN - 2)
+                .tooltip(Component.translatable("gui.create_controlling.lamp_inverted.tooltip"));
         limitRowY = y + 16;
         limitButtons(limitRowY, "min");
         limitButtons(limitRowY + 16, "max");
@@ -577,6 +582,11 @@ public class PanelDesignerScreen extends Screen {
         tag.putString("Key", key);
         valueWriter.accept(tag);
         send(tag);
+    }
+
+    private void toggleLampInverted() {
+        if (selected() instanceof LampElement lamp)
+            sendOption("inverted", tag -> tag.putBoolean("Value", !lamp.inverted()));
     }
 
     private void toggleGuardKeepsState() {
@@ -999,7 +1009,8 @@ public class PanelDesignerScreen extends Screen {
 
     /** A flat swatch for each component: its colour, brightened when active. */
     private static int fillOf(PanelElement element) {
-        boolean active = element.displayStrength() > 0 || element.transmittedStrength() > 0;
+        boolean active = element instanceof LampElement lamp ? lamp.brightness() > 0
+                : element.displayStrength() > 0 || element.transmittedStrength() > 0;
         if (element instanceof ColorableElement colorable)
             return argb(colorable.color(), active ? 1.0f : 0.6f);
         if (element instanceof ReceiverElement)
@@ -1275,6 +1286,14 @@ public class PanelDesignerScreen extends Screen {
                 guardButton.setMessage(Component.translatable(guarded.keepsState()
                         ? "gui.create_controlling.guard.keeps" : "gui.create_controlling.guard.switches_off"));
                 guardButton.setGreen(guarded.keepsState());
+            }
+        }
+        if (invertButton != null) {
+            invertButton.visible = element instanceof LampElement;
+            if (element instanceof LampElement lamp) {
+                invertButton.setMessage(Component.translatable(lamp.inverted()
+                        ? "gui.create_controlling.lamp_inverted.on" : "gui.create_controlling.lamp_inverted.off"));
+                invertButton.setGreen(lamp.inverted());
             }
         }
         labelOnly.forEach(w -> w.visible = isLabel);

@@ -112,7 +112,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
             else if (element instanceof AnalogLeverElement lever)
                 analogLever(p, w, d, lever.value(), color(lever));
             else if (element instanceof LampElement lamp)
-                lamp(p, w, d, h, lamp.displayStrength(), color(lamp));
+                lamp(p, w, d, h, lamp.brightness(), color(lamp));
             else if (element instanceof NeedleMeterElement meter)
                 needleMeter(p, w, d, meter.displayStrength());
             else if (element instanceof BarMeterElement meter)

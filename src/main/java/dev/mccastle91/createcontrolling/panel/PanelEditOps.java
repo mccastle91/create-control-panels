@@ -6,6 +6,7 @@ import dev.mccastle91.createcontrolling.panel.element.ButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.ColorableElement;
 import dev.mccastle91.createcontrolling.panel.element.CoveredSwitchElement;
 import dev.mccastle91.createcontrolling.panel.element.LabelElement;
+import dev.mccastle91.createcontrolling.panel.element.LampElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElementType;
 import dev.mccastle91.createcontrolling.panel.element.ReadoutElement;
@@ -236,6 +237,8 @@ public final class PanelEditOps {
             button.setPulseTicks(op.getInt("Value"));
         else if (element instanceof CoveredSwitchElement guarded && key.equals("keeps_state"))
             guarded.setKeepsState(op.getBoolean("Value"));
+        else if (element instanceof LampElement lamp && key.equals("inverted"))
+            lamp.setInverted(op.getBoolean("Value"));
         else if (element instanceof ReadoutElement readout && key.equals("line"))
             readout.setLine(op.getInt("Row"), op.getInt("Value"));
         else if (element instanceof LabelElement label) {
