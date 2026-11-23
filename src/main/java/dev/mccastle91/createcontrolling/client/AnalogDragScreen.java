@@ -192,7 +192,7 @@ public class AnalogDragScreen extends Screen {
         if (popup && (changed || ticks >= POPUP_DELAY_TICKS))
             renderDial(graphics, element);
         else if (changed)
-            graphics.drawCenteredString(font, Integer.toString(value), width / 2, height / 2 + 10, 0xFFFFFF);
+            graphics.drawCenteredString(font, Integer.toString(value), width / 2, height / 2 + 10, StyleColor.TEXT.argb());
     }
 
     /** The dial window: the part itself, drawn large, with its value beneath. */

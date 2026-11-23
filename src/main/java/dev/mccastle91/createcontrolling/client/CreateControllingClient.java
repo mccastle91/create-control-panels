@@ -26,6 +26,7 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RenderHighlightEvent;
 import net.neoforged.neoforge.common.NeoForge;
 //?} else {
@@ -33,6 +34,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterColorHandlersEvent;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RenderHighlightEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -58,6 +60,7 @@ public final class CreateControllingClient {
         modEventBus.addListener(CreateControllingClient::registerRenderers);
         modEventBus.addListener(CreateControllingClient::swapConsoleModels);
         modEventBus.addListener(CreateControllingClient::registerBlockColors);
+        modEventBus.addListener(CreateControllingClient::registerReloadListeners);
         //? if neoforge {
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onMouseScroll);
         NeoForge.EVENT_BUS.addListener(AnalogDrag::onUseKey);
@@ -114,6 +117,11 @@ public final class CreateControllingClient {
         BakedModel itemModel = models.get(item);
         if (itemModel != null)
             models.put(item, new ConsoleBakedModel(itemModel, casing));
+    }
+
+    /** Colours and window textures a resource pack may have changed are read again on every reload. */
+    private static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(ConsoleStyle.INSTANCE);
     }
 
     /** A copycat console is tinted as the block it copies is (grass, leaves, water). */

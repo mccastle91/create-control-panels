@@ -86,8 +86,8 @@ public class PanelDesignerScreen extends Screen {
      * Frequency slot colours, from the two markers on Create's Redstone Link
      * texture: red for the first slot, blue for the second.
      */
-    private static final int[] FREQ_COLORS = { 0xFF97333B, 0xFF5371C6 };
-    private static final int[] FREQ_COLORS_HOVER = { 0xFFC4505A, 0xFF7E98E0 };
+    private static final StyleColor[] FREQ_COLORS = { StyleColor.FREQUENCY_1, StyleColor.FREQUENCY_2 };
+    private static final StyleColor[] FREQ_COLORS_LIT = { StyleColor.FREQUENCY_1_LIT, StyleColor.FREQUENCY_2_LIT };
 
     /** The console being designed, or null when the screen is open on a blueprint. */
     private final BlockPos panelPos;
@@ -223,7 +223,7 @@ public class PanelDesignerScreen extends Screen {
     }
 
     private ThemedButton button(Component text, Button.OnPress onPress, int x, int y, int width) {
-        return addRenderableWidget(new ThemedButton(x, y, width, 14, text, onPress));
+        return addRenderableWidget(new ThemedButton(x, y, width, 14, text, onPress).themed(this::theme));
     }
 
     private PanelLayout layout() {
@@ -332,19 +332,19 @@ public class PanelDesignerScreen extends Screen {
         limitRowY = y + 16;
         limitButtons(limitRowY, "min");
         limitButtons(limitRowY + 16, "max");
-        pulseOnly.add(button(Component.literal("Pulse -"), b -> adjustPulse(-5), sideX, y + 16, 58));
-        pulseOnly.add(button(Component.literal("Pulse +"), b -> adjustPulse(5), sideX + 60, y + 16, 58));
-        barOnly.add(button(Component.literal("Length -"), b -> adjustBarLength(-1), sideX, y + 16, 58));
-        barOnly.add(button(Component.literal("Length +"), b -> adjustBarLength(1), sideX + 60, y + 16, 58));
+        pulseOnly.add(button(Component.translatable("gui.create_controlling.pulse_less"), b -> adjustPulse(-5), sideX, y + 16, 58));
+        pulseOnly.add(button(Component.translatable("gui.create_controlling.pulse_more"), b -> adjustPulse(5), sideX + 60, y + 16, 58));
+        barOnly.add(button(Component.translatable("gui.create_controlling.length_less"), b -> adjustBarLength(-1), sideX, y + 16, 58));
+        barOnly.add(button(Component.translatable("gui.create_controlling.length_more"), b -> adjustBarLength(1), sideX + 60, y + 16, 58));
 
         // Readouts: which line each row shows, between its - and + buttons, then the size
         lineRowY = y;
         lineButtons(readoutOnly, 0, y);
         lineButtons(boardOnly, 1, y + 16);
-        boardOnly.add(button(Component.literal("Width -"), b -> adjustReadoutSize(-1), sideX, y + 32, 58));
-        boardOnly.add(button(Component.literal("Width +"), b -> adjustReadoutSize(1), sideX + 60, y + 32, 58));
-        stripOnly.add(button(Component.literal("Tubes -"), b -> adjustReadoutSize(-1), sideX, y + 16, 58));
-        stripOnly.add(button(Component.literal("Tubes +"), b -> adjustReadoutSize(1), sideX + 60, y + 16, 58));
+        boardOnly.add(button(Component.translatable("gui.create_controlling.width_less"), b -> adjustReadoutSize(-1), sideX, y + 32, 58));
+        boardOnly.add(button(Component.translatable("gui.create_controlling.width_more"), b -> adjustReadoutSize(1), sideX + 60, y + 32, 58));
+        stripOnly.add(button(Component.translatable("gui.create_controlling.tubes_less"), b -> adjustReadoutSize(-1), sideX, y + 16, 58));
+        stripOnly.add(button(Component.translatable("gui.create_controlling.tubes_more"), b -> adjustReadoutSize(1), sideX + 60, y + 16, 58));
 
         fieldY = y;
         labelTextBox = new EditBox(font, sideX + 4, y + 3, COLUMN - 2 - 8, 10, Component.empty());
@@ -356,10 +356,10 @@ public class PanelDesignerScreen extends Screen {
         addRenderableWidget(labelTextBox);
         labelOnly.add(button(Component.translatable("gui.create_controlling.apply"), b -> sendLabelText(), sideX, y + 16, 58));
         labelOnly.add(button(Component.translatable("gui.create_controlling.align"), b -> cycleAlignment(), sideX + 60, y + 16, 58));
-        labelOnly.add(button(Component.literal("Size -"), b -> adjustScale(-1), sideX, y + 32, 58));
-        labelOnly.add(button(Component.literal("Size +"), b -> adjustScale(1), sideX + 60, y + 32, 58));
-        labelOnly.add(button(Component.literal("Width -"), b -> adjustLabelWidth(-1), sideX, y + 48, 58));
-        labelOnly.add(button(Component.literal("Width +"), b -> adjustLabelWidth(1), sideX + 60, y + 48, 58));
+        labelOnly.add(button(Component.translatable("gui.create_controlling.size_less"), b -> adjustScale(-1), sideX, y + 32, 58));
+        labelOnly.add(button(Component.translatable("gui.create_controlling.size_more"), b -> adjustScale(1), sideX + 60, y + 32, 58));
+        labelOnly.add(button(Component.translatable("gui.create_controlling.width_less"), b -> adjustLabelWidth(-1), sideX, y + 48, 58));
+        labelOnly.add(button(Component.translatable("gui.create_controlling.width_more"), b -> adjustLabelWidth(1), sideX + 60, y + 48, 58));
         labelOnly.add(button(Component.translatable("gui.create_controlling.text_color"), b -> openColorPicker(ColorTarget.TEXT, b), sideX, y + 64, COLUMN - 2));
         wrapButton = button(Component.empty(), b -> toggleWrap(), sideX, y + 80, COLUMN - 2)
                 .tooltip(Component.translatable("gui.create_controlling.wrap.tooltip"));
@@ -1014,12 +1014,12 @@ public class PanelDesignerScreen extends Screen {
         if (element instanceof ColorableElement colorable)
             return argb(colorable.color(), active ? 1.0f : 0.6f);
         if (element instanceof ReceiverElement)
-            return active ? 0xFFB08850 : 0xFF6E5A3C; // brass-housed gauges
+            return (active ? StyleColor.PART_GAUGE_ACTIVE : StyleColor.PART_GAUGE).argb(); // brass-housed gauges
         if (element instanceof DisplayBoardElement)
-            return 0xFF2B2B2D;
+            return StyleColor.PART_BOARD.argb();
         if (element instanceof NixieStripElement)
-            return 0xFF6E5A3C;
-        return 0xFF5A5A60;
+            return StyleColor.PART_GAUGE.argb();
+        return StyleColor.PART_PLAIN.argb();
     }
 
     private void frame(GuiGraphics graphics, int x0, int y0, int x1, int y1, int argb) {
@@ -1052,7 +1052,7 @@ public class PanelDesignerScreen extends Screen {
         }
         ConsoleGui.window(graphics, font, theme, title, windowX, windowY, WINDOW_WIDTH, WINDOW_HEIGHT);
         if ((labelTextBox != null && labelTextBox.visible) || (nameBox != null && nameBox.visible))
-            ConsoleGui.field(graphics, sideX, fieldY, COLUMN - 2, 14);
+            ConsoleGui.field(graphics, theme, sideX, fieldY, COLUMN - 2, 14);
         for (Renderable widget : renderables)
             widget.render(graphics, mouseX, mouseY, partialTick);
         PanelLayout layout = layout();
@@ -1067,14 +1067,14 @@ public class PanelDesignerScreen extends Screen {
             Component front = Component.translatable("gui.create_controlling.front",
                     formatPx(panel.shape().frontHeight()));
             graphics.drawString(font, front, frontX + (frontWidth - font.width(front)) / 2, frontRowY + 3,
-                    ConsoleGui.PANEL_TEXT, false);
+                    StyleColor.PANEL_TEXT.argb(), false);
         }
 
         if (element != null) {
             String header = Component.translatable("gui.create_controlling.element." + element.type().id()).getString();
             if (element instanceof ButtonElement button)
                 header += "  " + button.pulseTicks() + "t";
-            drawFitted(graphics, header, sideX, infoY + 5, COLUMN - 2 - ThemedButton.ICON_SIZE - 3, 0xFFFFFF);
+            drawFitted(graphics, header, sideX, infoY + 5, COLUMN - 2 - ThemedButton.ICON_SIZE - 3, StyleColor.TEXT.argb());
             if (hasFrequency(element)) {
                 graphics.drawString(font, Component.translatable("gui.create_controlling.frequency_slots"),
                         sideX, freqLabelY, theme.accent);
@@ -1087,19 +1087,19 @@ public class PanelDesignerScreen extends Screen {
             if (element instanceof AnalogElement analog) {
                 int middle = sideX + (COLUMN - 2) / 2;
                 graphics.drawCenteredString(font, Component.translatable("gui.create_controlling.limit.min", analog.min()),
-                        middle, limitRowY + 3, 0xFFFFFF);
+                        middle, limitRowY + 3, StyleColor.TEXT.argb());
                 graphics.drawCenteredString(font, Component.translatable("gui.create_controlling.limit.max", analog.max()),
-                        middle, limitRowY + 16 + 3, 0xFFFFFF);
+                        middle, limitRowY + 16 + 3, StyleColor.TEXT.argb());
             }
             if (element instanceof ReadoutElement readout)
                 for (int row = 0; row < readout.rows(); row++)
                     graphics.drawCenteredString(font, rowLabel(readout, row), sideX + (COLUMN - 2) / 2,
-                            lineRowY + row * 16 + 3, 0xFFFFFF);
+                            lineRowY + row * 16 + 3, StyleColor.TEXT.argb());
         } else if (onBlueprint()) {
             renderMaterials(graphics, layout, theme);
         } else {
             graphics.drawWordWrap(font, Component.translatable("gui.create_controlling.designer_hint"),
-                    sideX, infoY + 1, COLUMN - 2, 0xDDDDDD);
+                    sideX, infoY + 1, COLUMN - 2, StyleColor.TEXT_HINT.argb());
             graphics.drawString(font, Component.translatable("gui.create_controlling.console_name"),
                     sideX, optionsY, theme.accent);
         }
@@ -1123,13 +1123,13 @@ public class PanelDesignerScreen extends Screen {
     /** On a blueprint with nothing selected: how it is used, then what the drawing would cost to build. */
     private void renderMaterials(GuiGraphics graphics, PanelLayout layout, CasingTheme theme) {
         Component hint = Component.translatable("gui.create_controlling.blueprint_hint");
-        graphics.drawWordWrap(font, hint, sideX, infoY + 1, COLUMN - 2, 0xDDDDDD);
+        graphics.drawWordWrap(font, hint, sideX, infoY + 1, COLUMN - 2, StyleColor.TEXT_HINT.argb());
         int y = infoY + 1 + font.wordWrapHeight(hint, COLUMN - 2) + 5;
         graphics.drawString(font, Component.translatable("gui.create_controlling.materials"), sideX, y, theme.accent);
         y += 11;
         List<ComponentCosts.Cost> total = ComponentCosts.totalOf(layout);
         if (total.isEmpty()) {
-            graphics.drawString(font, Component.translatable("gui.create_controlling.materials_none"), sideX, y, 0xA0A0A0);
+            graphics.drawString(font, Component.translatable("gui.create_controlling.materials_none"), sideX, y, StyleColor.TEXT_DIM.argb());
             return;
         }
         for (Component line : MaterialList.lines(total, minecraft == null ? null : minecraft.player)) {
@@ -1145,7 +1145,7 @@ public class PanelDesignerScreen extends Screen {
         graphics.pose().pushPose();
         graphics.pose().translate(x, y + (1 - k) * 4, 0);
         graphics.pose().scale(k, k, 1f);
-        graphics.drawString(font, text, 0, 0, 0xFFFFFF);
+        graphics.drawString(font, text, 0, 0, StyleColor.TEXT.argb());
         graphics.pose().popPose();
     }
 
@@ -1157,9 +1157,9 @@ public class PanelDesignerScreen extends Screen {
      * paper, a shade lighter where parts can go.
      */
     private void renderFace(GuiGraphics graphics, PanelBlockEntity panel, PanelLayout layout) {
-        frame(graphics, canvasX - 1, canvasY - 1, canvasX + CANVAS + 1, canvasY + CANVAS + 1, 0xFF000000);
+        frame(graphics, canvasX - 1, canvasY - 1, canvasX + CANVAS + 1, canvasY + CANVAS + 1, StyleColor.FACE_BORDER.argb());
         if (panel == null) {
-            graphics.fill(canvasX, canvasY, canvasX + CANVAS, canvasY + CANVAS, 0xFF284B85);
+            graphics.fill(canvasX, canvasY, canvasX + CANVAS, canvasY + CANVAS, StyleColor.BLUEPRINT_FRAME.argb());
         } else if (panel.material() == null) {
             graphics.blit(canvasX, canvasY, 0, CANVAS, CANVAS, ComponentPainter.sprite(panel.casing().texture()));
         } else {
@@ -1177,18 +1177,18 @@ public class PanelDesignerScreen extends Screen {
         int inner = (int) (PanelElement.AREA_MIN * SCALE);
         int x0 = canvasX + inner, y0 = canvasY + inner, x1 = canvasX + CANVAS - inner, y1 = canvasY + CANVAS - inner;
         if (panel == null) {
-            graphics.fill(x0, y0, x1, y1, 0xFF335F9E);
+            graphics.fill(x0, y0, x1, y1, StyleColor.BLUEPRINT_PAPER.argb());
         } else {
             graphics.enableScissor(x0, y0, x1, y1);
             graphics.blit(canvasX, canvasY, 0, CANVAS, CANVAS, ComponentPainter.sprite(
                     dev.mccastle91.createcontrolling.client.model.ConsoleBakedModel.plateTexture(panel.plateColor())));
             graphics.disableScissor();
             // the plate sits a little below its frame
-            graphics.fill(x0, y0, x1, y0 + 1, 0x70000000);
-            graphics.fill(x0, y0, x0 + 1, y1, 0x70000000);
+            graphics.fill(x0, y0, x1, y0 + 1, StyleColor.FACE_SHADOW.argb());
+            graphics.fill(x0, y0, x0 + 1, y1, StyleColor.FACE_SHADOW.argb());
         }
         for (int i = 2; i < 15; i++) {
-            int line = i % 4 == 0 ? 0x30FFFFFF : 0x14FFFFFF;
+            int line = (i % 4 == 0 ? StyleColor.GRID_MAJOR : StyleColor.GRID_MINOR).argb();
             graphics.fill(canvasX + i * SCALE, y0, canvasX + i * SCALE + 1, y1, line);
             graphics.fill(x0, canvasY + i * SCALE, x1, canvasY + i * SCALE + 1, line);
         }
@@ -1199,15 +1199,15 @@ public class PanelDesignerScreen extends Screen {
             int ex1 = canvasX + Math.round((e.x() + e.width()) * SCALE);
             int ey1 = canvasY + Math.round((e.y() + e.depth()) * SCALE);
             if (e instanceof LabelElement label) {
-                frame(graphics, ex0, ey0, ex1, ey1, 0x30FFFFFF);
+                frame(graphics, ex0, ey0, ex1, ey1, StyleColor.LABEL_OUTLINE.argb());
                 drawLabel(graphics, label, ex0, ey0, ex1, ey1);
             } else {
-                graphics.fill(ex0, ey0, ex1, ey1, 0xFF2A2724);
+                graphics.fill(ex0, ey0, ex1, ey1, StyleColor.PART_OUTLINE.argb());
                 graphics.fill(ex0 + 1, ey0 + 1, ex1 - 1, ey1 - 1, fillOf(e));
                 drawGlyph(graphics, e, ex0, ey0, ex1, ey1);
             }
             if (e.id().equals(selectedId))
-                frame(graphics, ex0 - 1, ey0 - 1, ex1 + 1, ey1 + 1, 0xFFFFFFFF);
+                frame(graphics, ex0 - 1, ey0 - 1, ex1 + 1, ey1 + 1, StyleColor.SELECTION.argb());
         }
 
         // Drag ghost: white where the component may land, red where it can't
@@ -1219,7 +1219,7 @@ public class PanelDesignerScreen extends Screen {
                 int gx = canvasX + Math.round(previewX * SCALE);
                 int gy = canvasY + Math.round(previewY * SCALE);
                 graphics.fill(gx, gy, gx + Math.round(dragged.width() * SCALE), gy + Math.round(dragged.depth() * SCALE),
-                        valid ? 0x60FFFFFF : 0x70FF4040);
+                        (valid ? StyleColor.DRAG_VALID : StyleColor.DRAG_INVALID).argb());
             }
         }
     }
@@ -1257,18 +1257,18 @@ public class PanelDesignerScreen extends Screen {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 400);
         int x0 = colorPickerX, y0 = colorPickerY;
-        ConsoleGui.panel(graphics, x0, y0, PICKER_SIZE, PICKER_SIZE);
+        ConsoleGui.panel(graphics, theme(), x0, y0, PICKER_SIZE, PICKER_SIZE);
         DyeColor hovered = swatchAt(mouseX, mouseY);
         for (DyeColor dye : DyeColor.values()) {
             int x = x0 + PICKER_PAD + (dye.getId() % 4) * SWATCH_STEP;
             int y = y0 + PICKER_PAD + (dye.getId() / 4) * SWATCH_STEP;
             boolean current = isCurrentColor(element, dye);
-            ConsoleGui.slot(graphics, x, y, SWATCH);
+            ConsoleGui.slot(graphics, theme(), x, y, SWATCH);
             if (current || dye == hovered)
-                graphics.fill(x, y, x + SWATCH, y + SWATCH, 0xFFFFFFFF);
+                graphics.fill(x, y, x + SWATCH, y + SWATCH, StyleColor.SWATCH_RING.argb());
             graphics.fill(x + 1, y + 1, x + SWATCH - 1, y + SWATCH - 1, 0xFF000000 | swatchRgb(dye));
             if (current) // a second ring so the current colour stands out from a hovered one
-                frame(graphics, x + 1, y + 1, x + SWATCH - 1, y + SWATCH - 1, 0xFF15110C);
+                frame(graphics, x + 1, y + 1, x + SWATCH - 1, y + SWATCH - 1, StyleColor.SWATCH_CURRENT.argb());
         }
         graphics.pose().popPose();
     }
@@ -1342,23 +1342,23 @@ public class PanelDesignerScreen extends Screen {
         int cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
         if (e instanceof AnalogElement analog) {
             int fill = Math.round((x1 - x0 - 4) * analog.value() / 15f);
-            graphics.fill(x0 + 2, y1 - 3, x0 + 2 + fill, y1 - 2, 0xFFFFFFFF);
+            graphics.fill(x0 + 2, y1 - 3, x0 + 2 + fill, y1 - 2, StyleColor.PART_MARK_LIGHT.argb());
         } else if (e instanceof SwitchElement toggle) {
-            graphics.fill(cx - 1, toggle.isOn() ? y0 + 2 : cy, cx + 1, toggle.isOn() ? cy : y1 - 2, 0xFF202020);
+            graphics.fill(cx - 1, toggle.isOn() ? y0 + 2 : cy, cx + 1, toggle.isOn() ? cy : y1 - 2, StyleColor.PART_MARK_DARK.argb());
         } else if (e instanceof CoveredSwitchElement covered) {
             // the lever as on a toggle switch, inside a ring while the guard is down
-            graphics.fill(cx - 1, covered.isOn() ? y0 + 4 : cy, cx + 1, covered.isOn() ? cy : y1 - 4, 0xFF202020);
+            graphics.fill(cx - 1, covered.isOn() ? y0 + 4 : cy, cx + 1, covered.isOn() ? cy : y1 - 4, StyleColor.PART_MARK_DARK.argb());
             if (!covered.isGuardOpen())
-                frame(graphics, x0 + 2, y0 + 2, x1 - 2, y1 - 2, 0xFF202020);
+                frame(graphics, x0 + 2, y0 + 2, x1 - 2, y1 - 2, StyleColor.PART_MARK_DARK.argb());
         } else if (e instanceof LatchingButtonElement latching && latching.isOn()) {
-            graphics.fill(cx - 2, cy - 2, cx + 2, cy + 2, 0xFFFFFFFF);
+            graphics.fill(cx - 2, cy - 2, cx + 2, cy + 2, StyleColor.PART_MARK_LIGHT.argb());
         } else if (e instanceof ReceiverElement receiver) {
-            graphics.drawCenteredString(font, Integer.toString(receiver.displayStrength()), cx, cy - 4, 0xFFFFFF);
+            graphics.drawCenteredString(font, Integer.toString(receiver.displayStrength()), cx, cy - 4, StyleColor.TEXT.argb());
         } else if (e instanceof ReadoutElement readout) {
             int rowHeight = (y1 - y0) / readout.rows();
             for (int row = 0; row < readout.rows(); row++)
                 graphics.drawCenteredString(font, lineName(readout.line(row)), cx,
-                        y0 + row * rowHeight + (rowHeight - 8) / 2, 0xFFFFFF);
+                        y0 + row * rowHeight + (rowHeight - 8) / 2, StyleColor.TEXT.argb());
         }
     }
 
@@ -1386,8 +1386,8 @@ public class PanelDesignerScreen extends Screen {
 
     /** A frequency slot: an item slot ringed in its link colour, brighter while lit. */
     private void frequencySlot(GuiGraphics graphics, int x, int y, int slot, boolean lit, ItemStack stack) {
-        graphics.fill(x, y, x + 18, y + 18, (lit ? FREQ_COLORS_HOVER : FREQ_COLORS)[slot]);
-        ConsoleGui.slot(graphics, x + 1, y + 1, 16);
+        graphics.fill(x, y, x + 18, y + 18, (lit ? FREQ_COLORS_LIT : FREQ_COLORS)[slot].argb());
+        ConsoleGui.slot(graphics, theme(), x + 1, y + 1, 16);
         if (!stack.isEmpty())
             graphics.renderItem(stack, x + 1, y + 1);
     }
@@ -1425,13 +1425,13 @@ public class PanelDesignerScreen extends Screen {
             ItemStack stack = slot == 0 ? element.frequency().first() : element.frequency().second();
             frequencySlot(graphics, x, y, slot, slot == hoveredSlot || dragging, stack);
             if (dragging && slot == hoveredSlot)
-                graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x60FFFFFF);
+                graphics.fill(x + 1, y + 1, x + 17, y + 17, StyleColor.SLOT_DROP.argb());
         }
 
         int inventoryY = oy + CHOOSER_INVENTORY_Y;
         AllGuiTextures.PLAYER_INVENTORY.render(graphics, ox, inventoryY);
         graphics.drawString(font, Component.translatable("container.inventory"), ox + 8, inventoryY + 6,
-                ConsoleGui.PANEL_TEXT, false);
+                StyleColor.PANEL_TEXT.argb(), false);
         ItemStack hoveredItem = ItemStack.EMPTY;
         for (int row = 0; row < 4; row++) {
             for (int column = 0; column < 9; column++) {
@@ -1444,7 +1444,7 @@ public class PanelDesignerScreen extends Screen {
                         hoveredItem = stack;
                 }
                 if (hovered && !dragging)
-                    graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x80FFFFFF);
+                    graphics.fill(x + 1, y + 1, x + 17, y + 17, StyleColor.SLOT_HOVER.argb());
             }
         }
 
@@ -1515,24 +1515,19 @@ public class PanelDesignerScreen extends Screen {
         @Override
         public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             int x0 = getX(), x1 = x0 + width, y = getY(), top = y + 3;
-            graphics.fill(x0, top, x1, top + 8, 0xFF0E0000);
-            graphics.fill(x0 + 1, top + 1, x1 - 1, top + 7, 0xFF392A25);
-            graphics.fill(x0 + 1, top + 2, x1 - 1, top + 6, 0xFF2B1A14);
-            ConsoleGui.checker(graphics, 0x23120C, x0 + 1, top + 3, width - 2, 2);
+            CasingTheme theme = theme();
+            ConsoleGui.sliderTrack(graphics, theme, x0, top, width);
             // the handle's centre runs 4 px inside each end, as the vanilla slider's does
             for (float preset : ConsoleShape.PRESETS) {
                 int notch = x0 + 4 + Math.round(preset / ConsoleShape.MAX_ANGLE * (width - 8));
-                graphics.fill(notch, top + 1, notch + 1, top + 7, 0xFF8A6A3F);
+                graphics.fill(notch, top + 1, notch + 1, top + 7, StyleColor.SLIDER_NOTCH.argb());
             }
             Component text = getMessage();
             int cursorWidth = font.width(text) + 10;
             int center = x0 + 4 + (int) Math.round(value * (width - 8));
             int cx = Mth.clamp(center - cursorWidth / 2, x0, x1 - cursorWidth);
-            graphics.fill(cx, y, cx + cursorWidth, y + 14, 0xFF704630);
-            graphics.fill(cx + 1, y + 1, cx + cursorWidth - 1, y + 13, isHovered() || dragging ? 0xFFFFEB8C : 0xFFFBDC7D);
-            ConsoleGui.checker(graphics, 0xCEA05A, cx + 1, y + 2, cursorWidth - 2, 10);
-            graphics.fill(cx + 1, y + 12, cx + cursorWidth - 1, y + 13, 0xFF9C6846);
-            graphics.drawString(font, text, cx + 5, y + 3, 0x442B15, false);
+            ConsoleGui.sliderHandle(graphics, theme, cx, y, cursorWidth, isHovered() || dragging);
+            graphics.drawString(font, text, cx + 5, y + 3, StyleColor.SLIDER_TEXT.argb(), false);
         }
 
         @Override

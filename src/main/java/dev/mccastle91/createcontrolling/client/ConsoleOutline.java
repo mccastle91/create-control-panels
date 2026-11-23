@@ -27,8 +27,7 @@ import java.util.Optional;
  */
 public final class ConsoleOutline {
 
-    /** Vanilla's highlight colour. */
-    private static final int COLOR = 0x66000000;
+    // drawn in StyleColor.HIGHLIGHT: vanilla's highlight colour, unless a resource pack changes it
 
     private ConsoleOutline() {
     }
@@ -96,9 +95,9 @@ public final class ConsoleOutline {
             if (length < 1e-4)
                 return;
             d = d.scale(1 / length);
-            ClientCompat.lineVertex(consumer, pose, (float) a.x, (float) a.y, (float) a.z, COLOR,
+            ClientCompat.lineVertex(consumer, pose, (float) a.x, (float) a.y, (float) a.z, StyleColor.HIGHLIGHT.argb(),
                     (float) d.x, (float) d.y, (float) d.z);
-            ClientCompat.lineVertex(consumer, pose, (float) b.x, (float) b.y, (float) b.z, COLOR,
+            ClientCompat.lineVertex(consumer, pose, (float) b.x, (float) b.y, (float) b.z, StyleColor.HIGHLIGHT.argb(),
                     (float) d.x, (float) d.y, (float) d.z);
         }
     }

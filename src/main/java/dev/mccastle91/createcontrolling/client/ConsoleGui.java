@@ -1,18 +1,23 @@
 package dev.mccastle91.createcontrolling.client;
 
-import dev.mccastle91.createcontrolling.util.McCompat;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * The shapes Create's menus are built from, drawn to any size: a coloured
  * title bar, a dark checkered body in a thin frame, and a light grey footer.
- * Create's own menus are fixed-size pictures, so these are drawn here instead,
- * pixel for pixel in the same colours (taken from Create's sequencer,
- * display link and value settings textures); the title and body colours come
- * from the console's {@link CasingTheme}.
+ * Create's own menus are fixed-size pictures, so each shape here is a small
+ * texture cut in nine: its corners are drawn as they are, its edges and
+ * middle stretched (or repeated) to fit. The textures are in
+ * {@code textures/gui/console/}, so a resource pack can redraw any of them,
+ * for every theme or for one (see {@link ConsoleStyle#texture}); the borders
+ * that stay unstretched are the constants below.
+ *
+ * A texture may be any resolution: the sizes here are in screen pixels, and
+ * the file is read as that many cells whatever its real size.
  */
 public final class ConsoleGui {
 
@@ -20,24 +25,39 @@ public final class ConsoleGui {
     public static final int TITLE_HEIGHT = 15;
     public static final int FOOTER_HEIGHT = 24;
 
-    private static final ResourceLocation CHECKER = McCompat.id("create_controlling", "textures/gui/checker.png");
+    /**
+     * One nine-cut texture: its size in screen pixels, and how much of each
+     * side keeps its size. {@code repeat} tiles the rest instead of stretching it.
+     */
+    private record Cut(String name, int width, int height, int left, int top, int right, int bottom, boolean repeat) {
+        Cut(String name, int width, int height, int left, int top, int right, int bottom) {
+            this(name, width, height, left, top, right, bottom, false);
+        }
+    }
 
-    private static final int BLACK = 0xFF000000;
-    private static final int WHITE = 0xFFFFFFFF;
-    private static final int FRAME = 0xFFB8B8B8;
-    private static final int FRAME_TOP = 0xFF787878;
-    private static final int PANEL = 0xFFC6C6C6;
-    private static final int PANEL_SHADOW = 0xFF555555;
-    private static final int SLOT_SHADOW = 0xFF373737;
-    private static final int SLOT = 0xFF8B8B8B;
-    /** Text on the light grey footer and panels. */
-    public static final int PANEL_TEXT = 0x3D3C48;
+    private static final Cut TITLE = new Cut("title", 16, 15, 3, 2, 3, 2);
+    private static final Cut WINDOW_FRAME = new Cut("window_frame", 16, 16, 2, 1, 2, 0);
+    private static final Cut PLAQUE = new Cut("plaque", 16, 16, 2, 2, 2, 2);
+    private static final Cut PANEL = new Cut("panel", 16, 16, 3, 2, 3, 2);
+    private static final Cut SLOT = new Cut("slot", 16, 16, 1, 1, 1, 1);
+    private static final Cut FIELD = new Cut("field", 16, 14, 1, 3, 1, 1);
+    private static final Cut SLIDER_TRACK = new Cut("slider_track", 16, 8, 1, 0, 1, 0, true);
+    private static final Cut SLIDER_HANDLE = new Cut("slider_handle", 16, 14, 1, 2, 1, 2, true);
+    private static final Cut SLIDER_HANDLE_HOVER = new Cut("slider_handle_hover", 16, 14, 1, 2, 1, 2, true);
+    private static final Cut BUTTON = button("button");
+    private static final Cut BUTTON_HOVER = button("button_hover");
+    private static final Cut BUTTON_GREEN = button("button_green");
+    private static final Cut BUTTON_GREEN_HOVER = button("button_green_hover");
+    private static final Cut BUTTON_DISABLED = button("button_disabled");
+
+    /** Side of the body tile, which repeats across the body. */
+    private static final int BODY_TILE = 16;
 
     private ConsoleGui() {
     }
 
-    private static int opaque(int rgb) {
-        return 0xFF000000 | rgb;
+    private static Cut button(String name) {
+        return new Cut(name, 16, 16, 1, 1, 1, 1);
     }
 
     /**
@@ -49,90 +69,108 @@ public final class ConsoleGui {
         titleBar(graphics, font, theme, title, x, y, width);
         int footerY = y + height - FOOTER_HEIGHT;
         body(graphics, theme, x + 1, y + TITLE_HEIGHT, width - 2, footerY - y - TITLE_HEIGHT);
-        panel(graphics, x, footerY, width, FOOTER_HEIGHT);
+        panel(graphics, theme, x, footerY, width, FOOTER_HEIGHT);
     }
 
     public static void titleBar(GuiGraphics graphics, Font font, CasingTheme theme, Component title, int x, int y, int width) {
-        graphics.fill(x, y, x + width, y + TITLE_HEIGHT, BLACK);
-        graphics.fill(x + 1, y + 1, x + width - 1, y + TITLE_HEIGHT - 1, opaque(theme.titleShadow));
-        graphics.fill(x + 1, y + 1, x + width - 3, y + TITLE_HEIGHT - 2, opaque(theme.titleHighlight));
-        graphics.fill(x + 3, y + 2, x + width - 3, y + TITLE_HEIGHT - 2, opaque(theme.title));
+        draw(graphics, theme, TITLE, x, y, width, TITLE_HEIGHT);
         graphics.drawString(font, title, x + (width - font.width(title)) / 2, y + 4, theme.titleText, false);
     }
 
     /** The dark checkered area behind a window's controls, in its thin grey frame. */
     public static void body(GuiGraphics graphics, CasingTheme theme, int x, int y, int width, int height) {
-        graphics.fill(x, y, x + width, y + height, BLACK);
-        graphics.fill(x + 1, y, x + width - 1, y + height, FRAME);
-        graphics.fill(x + 2, y, x + width - 2, y + 1, FRAME_TOP);
-        checker(graphics, theme.body, x + 2, y + 1, width - 4, height - 1);
+        bodyTile(graphics, theme, x + 2, y + 1, width - 4, height - 1);
+        draw(graphics, theme, WINDOW_FRAME, x, y, width, height);
     }
 
     /** A small window with no bars: the body alone, closed off all round. */
     public static void plaque(GuiGraphics graphics, CasingTheme theme, int x, int y, int width, int height) {
-        graphics.fill(x, y, x + width, y + height, BLACK);
-        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, FRAME);
-        checker(graphics, theme.body, x + 2, y + 2, width - 4, height - 4);
+        bodyTile(graphics, theme, x + 2, y + 2, width - 4, height - 4);
+        draw(graphics, theme, PLAQUE, x, y, width, height);
     }
 
-    /** Two close tones of one colour, alternating pixel by pixel. */
-    public static void checker(GuiGraphics graphics, int rgb, int x, int y, int width, int height) {
+    /** The theme's body texture, repeated from the area's top-left corner. */
+    private static void bodyTile(GuiGraphics graphics, CasingTheme theme, int x, int y, int width, int height) {
         if (width <= 0 || height <= 0)
             return;
-        graphics.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
-        graphics.blit(CHECKER, x, y, 0f, 0f, width, height, 16, 16);
-        graphics.setColor(1f, 1f, 1f, 1f);
+        graphics.blit(ConsoleStyle.texture(theme, "body"), x, y, 0f, 0f, width, height, BODY_TILE, BODY_TILE);
     }
 
     /** A raised light grey panel: Create's footer bar and its inventory window. */
-    public static void panel(GuiGraphics graphics, int x, int y, int width, int height) {
-        graphics.fill(x, y, x + width, y + height, BLACK);
-        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, PANEL_SHADOW);
-        graphics.fill(x + 1, y + 1, x + width - 3, y + height - 2, WHITE);
-        graphics.fill(x + 3, y + 2, x + width - 3, y + height - 2, PANEL);
+    public static void panel(GuiGraphics graphics, @Nullable CasingTheme theme, int x, int y, int width, int height) {
+        draw(graphics, theme, PANEL, x, y, width, height);
     }
 
     /** An item slot, sunk into whatever is behind it. */
-    public static void slot(GuiGraphics graphics, int x, int y, int size) {
-        graphics.fill(x, y, x + size, y + size, WHITE);
-        graphics.fill(x, y, x + size - 1, y + size - 1, SLOT_SHADOW);
-        graphics.fill(x + 1, y + 1, x + size - 1, y + size - 1, SLOT);
+    public static void slot(GuiGraphics graphics, @Nullable CasingTheme theme, int x, int y, int size) {
+        draw(graphics, theme, SLOT, x, y, size, size);
     }
 
     /** A sunken grey field for a value or typed text, as in Create's Display Link menu. */
-    public static void field(GuiGraphics graphics, int x, int y, int width, int height) {
-        graphics.fill(x, y, x + width, y + height, SLOT);
-        graphics.fill(x, y, x + width, y + 1, SLOT_SHADOW);
-        graphics.fill(x, y + height - 1, x + width, y + height, WHITE);
-        graphics.fill(x, y + 2, x + width, y + 3, 0xFFA3A3A3);
+    public static void field(GuiGraphics graphics, @Nullable CasingTheme theme, int x, int y, int width, int height) {
+        draw(graphics, theme, FIELD, x, y, width, height);
     }
 
     /**
      * A button of any size in the look of Create's: grey, blue under the
      * mouse, green while switched on.
      */
-    public static void button(GuiGraphics graphics, int x, int y, int width, int height,
+    public static void button(GuiGraphics graphics, @Nullable CasingTheme theme, int x, int y, int width, int height,
                               boolean hovered, boolean green, boolean active) {
-        int highlight, fill, shadow;
-        if (!active) {
-            highlight = 0xFF8B8B8B;
-            fill = 0xFF6A6A6A;
-            shadow = 0xFF373737;
-        } else if (green) {
-            highlight = hovered ? 0xFFD4E8A0 : 0xFFAEC57A;
-            fill = hovered ? 0xFF2A9A64 : 0xFF218756;
-            shadow = 0xFF0E2725;
-        } else if (hovered) {
-            highlight = WHITE;
-            fill = 0xFF8892C9;
-            shadow = 0xFF444964;
-        } else {
-            highlight = WHITE;
-            fill = SLOT;
-            shadow = BLACK;
+        Cut cut = !active ? BUTTON_DISABLED
+                : green ? (hovered ? BUTTON_GREEN_HOVER : BUTTON_GREEN)
+                : hovered ? BUTTON_HOVER : BUTTON;
+        draw(graphics, theme, cut, x, y, width, height);
+    }
+
+    /** The slider's track, 8 px tall. */
+    public static void sliderTrack(GuiGraphics graphics, @Nullable CasingTheme theme, int x, int y, int width) {
+        draw(graphics, theme, SLIDER_TRACK, x, y, width, SLIDER_TRACK.height);
+    }
+
+    /** The slider's handle, 14 px tall and as wide as the value it carries. */
+    public static void sliderHandle(GuiGraphics graphics, @Nullable CasingTheme theme, int x, int y, int width, boolean lit) {
+        draw(graphics, theme, lit ? SLIDER_HANDLE_HOVER : SLIDER_HANDLE, x, y, width, SLIDER_HANDLE.height);
+    }
+
+    // --- Nine-cut drawing -------------------------------------------------------
+
+    private static void draw(GuiGraphics graphics, @Nullable CasingTheme theme, Cut cut, int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0)
+            return;
+        ResourceLocation texture = ConsoleStyle.texture(theme, cut.name);
+        // borders give way before they overlap, on something smaller than the texture's own borders
+        int left = Math.min(cut.left, width / 2), right = Math.min(cut.right, width - left);
+        int top = Math.min(cut.top, height / 2), bottom = Math.min(cut.bottom, height - top);
+        int midW = width - left - right, midH = height - top - bottom;
+        int srcMidW = cut.width - cut.left - cut.right, srcMidH = cut.height - cut.top - cut.bottom;
+        int[] xs = { x, x + left, x + width - right }, ws = { left, midW, right };
+        int[] us = { 0, cut.left, cut.width - right }, uws = { left, srcMidW, right };
+        int[] ys = { y, y + top, y + height - bottom }, hs = { top, midH, bottom };
+        int[] vs = { 0, cut.top, cut.height - bottom }, vhs = { top, srcMidH, bottom };
+        for (int row = 0; row < 3; row++)
+            for (int column = 0; column < 3; column++)
+                piece(graphics, texture, cut, xs[column], ys[row], ws[column], hs[row],
+                        us[column], vs[row], uws[column], vhs[row], column == 1, row == 1);
+    }
+
+    /** One of the nine pieces; the middle ones stretch, or repeat, along the axes they span. */
+    private static void piece(GuiGraphics graphics, ResourceLocation texture, Cut cut, int x, int y, int width, int height,
+                              int u, int v, int srcW, int srcH, boolean spansX, boolean spansY) {
+        if (width <= 0 || height <= 0 || srcW <= 0 || srcH <= 0)
+            return;
+        if (!cut.repeat) {
+            graphics.blit(texture, x, y, width, height, u, v, srcW, srcH, cut.width, cut.height);
+            return;
         }
-        graphics.fill(x, y, x + width, y + height, shadow);
-        graphics.fill(x, y, x + width - 1, y + height - 1, highlight);
-        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, fill);
+        int stepX = spansX ? srcW : width, stepY = spansY ? srcH : height;
+        for (int dy = 0; dy < height; dy += stepY) {
+            int h = Math.min(stepY, height - dy);
+            for (int dx = 0; dx < width; dx += stepX) {
+                int w = Math.min(stepX, width - dx);
+                graphics.blit(texture, x + dx, y + dy, w, h, u, v, spansX ? w : srcW, spansY ? h : srcH,
+                        cut.width, cut.height);
+            }
+        }
     }
 }

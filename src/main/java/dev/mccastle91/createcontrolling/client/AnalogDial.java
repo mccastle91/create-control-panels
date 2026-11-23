@@ -23,11 +23,7 @@ public final class AnalogDial {
     private static final ResourceLocation IRON = McCompat.id("create", "textures/block/industrial_iron_block.png");
 
     private static final int WHITE = 0xFFFFFFFF;
-    private static final int DARK = 0xFF1C1C1F;
-    private static final int POINTER = 0xFFF0F0F0;
     /** The stop marks of a limited control, as on the console. */
-    private static final int STOP = 0xFFB3261E;
-    private static final int LEVER_LAMP = 0xFFFF2A1A;
 
     /** Drawing units per face pixel: fine enough for the parts' quarter- and tenth-pixel details. */
     private static final int UNITS = 20;
@@ -61,12 +57,12 @@ public final class AnalogDial {
         float r = w / 2;
         for (int tick : new int[] { 0, AnalogElement.MAX_VALUE / 2, AnalogElement.MAX_VALUE }) {
             turned(graphics, r, d / 2, KnobElement.angleFor(tick));
-            rect(graphics, COMPONENT, -0.15f, -r + 0.05f, 0.15f, -r + 0.45f, DARK);
+            rect(graphics, COMPONENT, -0.15f, -r + 0.05f, 0.15f, -r + 0.45f, StyleColor.MARKING.argb());
             graphics.pose().popPose();
         }
         for (int stop : stops) {
             turned(graphics, r, d / 2, KnobElement.angleFor(stop));
-            rect(graphics, COMPONENT, -0.15f, -r + 0.05f, 0.15f, -r + 0.45f, STOP);
+            rect(graphics, COMPONENT, -0.15f, -r + 0.05f, 0.15f, -r + 0.45f, StyleColor.NEEDLE.argb());
             graphics.pose().popPose();
         }
         turned(graphics, r, d / 2, KnobElement.angleFor(value));
@@ -74,7 +70,7 @@ public final class AnalogDial {
         // the body's shoulder sits lower than its cap: a shade darker reads as that step
         rect(graphics, COMPONENT, -body, -body, body, body, shade(color, 0.8f));
         rect(graphics, COMPONENT, -cap, -cap, cap, cap, color);
-        rect(graphics, COMPONENT, -0.25f, -body, 0.25f, -0.3f, POINTER);
+        rect(graphics, COMPONENT, -0.25f, -body, 0.25f, -0.3f, StyleColor.POINTER.argb());
         graphics.pose().popPose();
     }
 
@@ -85,22 +81,22 @@ public final class AnalogDial {
         for (float at : slider.stopLines()) {
             float half = SliderElement.STOP_LINE / 2;
             if (vertical)
-                rect(graphics, COMPONENT, 0, at - half, w, at + half, STOP);
+                rect(graphics, COMPONENT, 0, at - half, w, at + half, StyleColor.NEEDLE.argb());
             else
-                rect(graphics, COMPONENT, at - half, 0, at + half, d, STOP);
+                rect(graphics, COMPONENT, at - half, 0, at + half, d, StyleColor.NEEDLE.argb());
         }
         float f = SliderElement.fractionFor(value);
         float m = SliderElement.END_MARGIN;
         if (vertical) {
-            rect(graphics, COMPONENT, w / 2 - 0.2f, m / 2, w / 2 + 0.2f, d - m / 2, DARK);
+            rect(graphics, COMPONENT, w / 2 - 0.2f, m / 2, w / 2 + 0.2f, d - m / 2, StyleColor.MARKING.argb());
             float cy = d - m - f * (d - 2 * m);
             rect(graphics, COMPONENT, 0.15f, cy - m, w - 0.15f, cy + m, color);
-            rect(graphics, COMPONENT, 0.15f, cy - 0.12f, w - 0.15f, cy + 0.12f, DARK);
+            rect(graphics, COMPONENT, 0.15f, cy - 0.12f, w - 0.15f, cy + 0.12f, StyleColor.MARKING.argb());
         } else {
-            rect(graphics, COMPONENT, m / 2, d / 2 - 0.2f, w - m / 2, d / 2 + 0.2f, DARK);
+            rect(graphics, COMPONENT, m / 2, d / 2 - 0.2f, w - m / 2, d / 2 + 0.2f, StyleColor.MARKING.argb());
             float cx = m + f * (w - 2 * m);
             rect(graphics, COMPONENT, cx - m, 0.15f, cx + m, d - 0.15f, color);
-            rect(graphics, COMPONENT, cx - 0.12f, 0.15f, cx + 0.12f, d - 0.15f, DARK);
+            rect(graphics, COMPONENT, cx - 0.12f, 0.15f, cx + 0.12f, d - 0.15f, StyleColor.MARKING.argb());
         }
     }
 
@@ -109,7 +105,7 @@ public final class AnalogDial {
         rect(graphics, IRON, 0, 0, w, d, WHITE);
         rect(graphics, trim, w / 2 - 0.8f, d / 2 - 0.8f, w / 2 + 0.8f, d / 2 + 0.8f, WHITE);
         float glow = value > 0 ? 0.45f + 0.55f * value / AnalogElement.MAX_VALUE : 0.3f;
-        rect(graphics, COMPONENT, 0.3f, 0.3f, 1.0f, 1.0f, shade(LEVER_LAMP, glow));
+        rect(graphics, COMPONENT, 0.3f, 0.3f, 1.0f, 1.0f, shade(StyleColor.LEVER_LAMP.argb(), glow));
         double lean = Math.toRadians(AnalogLeverElement.angleFor(value));
         float r = AnalogLeverElement.HANDLE_HALF_WIDTH;
         float tipY = d / 2 - (float) Math.sin(lean) * (AnalogLeverElement.HANDLE_LENGTH - r);

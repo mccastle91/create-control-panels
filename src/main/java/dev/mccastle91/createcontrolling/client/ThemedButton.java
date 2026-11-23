@@ -24,6 +24,8 @@ public class ThemedButton extends Button {
     private final AllIcons icon;
     /** Shown green: the option this button stands for is switched on. */
     private boolean green;
+    /** Whose textures the button wears; asked each frame, since a console's casing can change under an open screen. */
+    private java.util.function.Supplier<CasingTheme> theme = () -> null;
 
     public ThemedButton(int x, int y, int width, int height, Component message, OnPress onPress) {
         super(x, y, width, height, message, onPress, DEFAULT_NARRATION);
@@ -42,6 +44,11 @@ public class ThemedButton extends Button {
         return this;
     }
 
+    public ThemedButton themed(java.util.function.Supplier<CasingTheme> theme) {
+        this.theme = theme;
+        return this;
+    }
+
     public void setGreen(boolean green) {
         this.green = green;
     }
@@ -57,8 +64,8 @@ public class ThemedButton extends Button {
             icon.render(graphics, getX() + 1, getY() + 1);
             return;
         }
-        ConsoleGui.button(graphics, getX(), getY(), width, height, hovered, green, active);
+        ConsoleGui.button(graphics, theme.get(), getX(), getY(), width, height, hovered, green, active);
         graphics.drawCenteredString(Minecraft.getInstance().font, getMessage(), getX() + width / 2,
-                getY() + (height - 8) / 2, active ? 0xFFFFFF : 0xA0A0A0);
+                getY() + (height - 8) / 2, (active ? StyleColor.BUTTON_TEXT : StyleColor.BUTTON_TEXT_DISABLED).argb());
     }
 }

@@ -40,13 +40,6 @@ import net.minecraft.world.level.block.state.properties.AttachFace;
  */
 public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements BlockEntityRenderer<T> {
 
-    private static final int DIAL_FACE = 0xFFEDE4D4;
-    private static final int NEEDLE = 0xFFB3261E;
-    private static final int LEVER_LAMP = 0xFFFF2A1A;
-    private static final int DARK = 0xFF1C1C1F;
-    private static final int GLASS = 0x40F2C9A0;
-    private static final int NIXIE_GLOW = 0xFFFF9A2E;
-    private static final int BOARD_TEXT = 0xFFEDEDED;
 
     /** Board text font line height, px, and how far long text may shrink to fit before it's cut off. */
     private static final float BOARD_LINE = 2.6f;
@@ -180,7 +173,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
      */
     private void coveredSwitch(ComponentPainter p, float w, float d, float top, boolean open, boolean on, int color) {
         toggleBase(p, w, d);
-        lever(p, w / 2, d / 2, 0.5f, on, LEVER_LENGTH, 0xFFDDDDDD);
+        lever(p, w / 2, d / 2, 0.5f, on, LEVER_LENGTH, StyleColor.GUARDED_LEVER.argb());
         float t = CoveredSwitchElement.LID_THICKNESS, post = 0.25f, base = 0.25f;
         // posts just inside the lid's side walls, clear of the lever and its
         // pivot block; they stop under the lid's top so no faces coincide
@@ -208,14 +201,14 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
             p.push();
             p.translate(r, d / 2, 0);
             p.rotateZ(KnobElement.angleFor(stop));
-            p.box(-0.15f, -r + 0.05f, 0.25f, 0.15f, -r + 0.45f, 0.3f + LIFT, component, NEEDLE, light);
+            p.box(-0.15f, -r + 0.05f, 0.25f, 0.15f, -r + 0.45f, 0.3f + LIFT, component, StyleColor.NEEDLE.argb(), light);
             p.pop();
         }
         for (int tick : new int[] { 0, 15 / 2, 15 }) {
             p.push();
             p.translate(r, d / 2, 0);
             p.rotateZ(KnobElement.angleFor(tick));
-            p.box(-0.15f, -r + 0.05f, 0.25f, 0.15f, -r + 0.45f, 0.3f, component, DARK, light);
+            p.box(-0.15f, -r + 0.05f, 0.25f, 0.15f, -r + 0.45f, 0.3f, component, StyleColor.MARKING.argb(), light);
             p.pop();
         }
         p.push();
@@ -224,7 +217,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         float body = r - 0.5f, cap = body - 0.4f;
         p.box(-body, -body, 0.25f, body, body, h - 0.4f, component, color, light);
         p.box(-cap, -cap, h - 0.4f, cap, cap, h, component, color, light);
-        p.box(-0.25f, -body - LIFT, h - 0.6f, 0.25f, -0.3f, h + LIFT, component, 0xFFF0F0F0, light);
+        p.box(-0.25f, -body - LIFT, h - 0.6f, 0.25f, -0.3f, h + LIFT, component, StyleColor.POINTER.argb(), light);
         p.pop();
     }
 
@@ -237,20 +230,20 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         for (float at : slider.stopLines()) {
             float half = SliderElement.STOP_LINE / 2;
             if (vertical)
-                p.plate(0, at - half, w, at + half, 0.25f + 2 * LIFT, component, NEEDLE, light);
+                p.plate(0, at - half, w, at + half, 0.25f + 2 * LIFT, component, StyleColor.NEEDLE.argb(), light);
             else
-                p.plate(at - half, 0, at + half, d, 0.25f + 2 * LIFT, component, NEEDLE, light);
+                p.plate(at - half, 0, at + half, d, 0.25f + 2 * LIFT, component, StyleColor.NEEDLE.argb(), light);
         }
         if (vertical) {
-            p.plate(w / 2 - 0.2f, m / 2, w / 2 + 0.2f, d - m / 2, 0.25f + LIFT, component, DARK, light);
+            p.plate(w / 2 - 0.2f, m / 2, w / 2 + 0.2f, d - m / 2, 0.25f + LIFT, component, StyleColor.MARKING.argb(), light);
             float cy = d - m - f * (d - 2 * m);
             p.box(0.15f, cy - m, 0.25f, w - 0.15f, cy + m, h, component, color, light);
-            p.plate(0.15f, cy - 0.12f, w - 0.15f, cy + 0.12f, h + LIFT, component, DARK, light);
+            p.plate(0.15f, cy - 0.12f, w - 0.15f, cy + 0.12f, h + LIFT, component, StyleColor.MARKING.argb(), light);
         } else {
-            p.plate(m / 2, d / 2 - 0.2f, w - m / 2, d / 2 + 0.2f, 0.25f + LIFT, component, DARK, light);
+            p.plate(m / 2, d / 2 - 0.2f, w - m / 2, d / 2 + 0.2f, 0.25f + LIFT, component, StyleColor.MARKING.argb(), light);
             float cx = m + f * (w - 2 * m);
             p.box(cx - m, 0.15f, 0.25f, cx + m, d - 0.15f, h, component, color, light);
-            p.plate(cx - 0.12f, 0.15f, cx + 0.12f, d - 0.15f, h + LIFT, component, DARK, light);
+            p.plate(cx - 0.12f, 0.15f, cx + 0.12f, d - 0.15f, h + LIFT, component, StyleColor.MARKING.argb(), light);
         }
     }
 
@@ -263,7 +256,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         p.box(0, 0, 0, w, d, 0.25f, iron, 0xFFFFFFFF, light);
         p.box(w / 2 - 0.8f, d / 2 - 0.8f, 0.25f, w / 2 + 0.8f, d / 2 + 0.8f, 0.75f, brass, 0xFFFFFFFF, light);
         boolean lit = value > 0;
-        int lamp = scale(LEVER_LAMP, lit ? 0.45f + 0.55f * value / AnalogElement.MAX_VALUE : 0.3f);
+        int lamp = scale(StyleColor.LEVER_LAMP.argb(), lit ? 0.45f + 0.55f * value / AnalogElement.MAX_VALUE : 0.3f);
         p.box(0.3f, 0.3f, 0.25f, 1.0f, 1.0f, 0.45f, component, lamp, lit ? ComponentPainter.FULL_BRIGHT : light);
         // one thickness all the way up; only the colour changes at the grip
         float r = AnalogLeverElement.HANDLE_HALF_WIDTH;
@@ -292,19 +285,19 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
 
     private void needleMeter(ComponentPainter p, float w, float d, int strength) {
         p.box(0, 0, 0, w, d, 0.5f, brass, 0xFFFFFFFF, light);
-        p.plate(0.5f, 0.5f, w - 0.5f, d - 0.5f, 0.5f + LIFT, component, DIAL_FACE, light);
+        p.plate(0.5f, 0.5f, w - 0.5f, d - 0.5f, 0.5f + LIFT, component, StyleColor.DIAL_FACE.argb(), light);
         float px = w / 2, py = d - 1;
         for (int tick = 0; tick <= 4; tick++) {
             p.push();
             p.translate(px, py, 0);
             p.rotateZ(-NeedleMeterElement.HALF_SWEEP + tick * NeedleMeterElement.HALF_SWEEP / 2);
-            p.plate(-0.1f, -2.5f, 0.1f, -2.0f, 0.5f + 2 * LIFT, component, DARK, light);
+            p.plate(-0.1f, -2.5f, 0.1f, -2.0f, 0.5f + 2 * LIFT, component, StyleColor.MARKING.argb(), light);
             p.pop();
         }
         p.push();
         p.translate(px, py, 0);
         p.rotateZ(NeedleMeterElement.angleFor(strength));
-        p.box(-0.12f, -2.6f, 0.5f + 3 * LIFT, 0.12f, 0.3f, 0.75f, component, NEEDLE, light);
+        p.box(-0.12f, -2.6f, 0.5f + 3 * LIFT, 0.12f, 0.3f, 0.75f, component, StyleColor.NEEDLE.argb(), light);
         p.pop();
         p.box(px - 0.4f, py - 0.4f, 0.5f, px + 0.4f, py + 0.4f, 0.85f, brass, 0xFFFFFFFF, light);
     }
@@ -312,7 +305,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
     /** Fills left to right, or from the near edge up when vertical (like a vertical slider's 0). */
     private void barMeter(ComponentPainter p, float w, float d, boolean vertical, int strength, int color) {
         p.box(0, 0, 0, w, d, 0.5f, iron, 0xFFFFFFFF, light);
-        p.plate(0.5f, 0.5f, w - 0.5f, d - 0.5f, 0.5f + LIFT, component, DARK, light);
+        p.plate(0.5f, 0.5f, w - 0.5f, d - 0.5f, 0.5f + LIFT, component, StyleColor.MARKING.argb(), light);
         if (strength <= 0)
             return;
         float z = 0.5f + 2 * LIFT;
@@ -363,17 +356,17 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
             float textWidth = font.width(glyph) * lineHeight / font.lineHeight;
             float textX = element.x() + x0 + (tube - textWidth) / 2, midY = element.y() + (y0 + y1) / 2;
             if (onWall)
-                p.floatingText(font, glyph, textX, midY, (socket + h) / 2, lineHeight, NIXIE_GLOW,
+                p.floatingText(font, glyph, textX, midY, (socket + h) / 2, lineHeight, StyleColor.NIXIE_GLOW.argb(),
                         ComponentPainter.FULL_BRIGHT);
             else
-                p.standingText(font, glyph, textX, midY, (socket + h) / 2, lineHeight, NIXIE_GLOW,
+                p.standingText(font, glyph, textX, midY, (socket + h) / 2, lineHeight, StyleColor.NIXIE_GLOW.argb(),
                         ComponentPainter.FULL_BRIGHT, hanging);
         }
         // the glass last and see-through, from the socket to the top
         p.translucent(true);
         for (int i = 0; i < count; i++) {
             float x0 = 0.5f + i * (tube + 0.5f), x1 = x0 + tube;
-            p.box(x0 + 0.1f, y0 + 0.1f, socket, x1 - 0.1f, y1 - 0.1f, h, component, GLASS, light);
+            p.box(x0 + 0.1f, y0 + 0.1f, socket, x1 - 0.1f, y1 - 0.1f, h, component, StyleColor.NIXIE_GLASS.argb(), light);
         }
         p.translucent(false);
     }
@@ -395,7 +388,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
             if (font.width(text) > columns)
                 text = font.plainSubstrByWidth(text, columns - font.width("…")) + "…";
             float y = board.y() + row * rowDepth + (rowDepth - lineHeight * ComponentPainter.GLYPH_HEIGHT) / 2;
-            p.faceText(font, text, board.x() + BOARD_MARGIN, y, h + LIFT, lineHeight, BOARD_TEXT, light);
+            p.faceText(font, text, board.x() + BOARD_MARGIN, y, h + LIFT, lineHeight, StyleColor.BOARD_TEXT.argb(), light);
         }
     }
 
