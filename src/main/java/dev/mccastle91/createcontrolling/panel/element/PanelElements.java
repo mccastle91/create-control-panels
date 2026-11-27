@@ -49,6 +49,15 @@ public final class PanelElements {
     public static final PanelElementType<DisplayBoardElement> DISPLAY_BOARD =
             PanelElementType.register("display_board", DisplayBoardElement::new, 12, 6, 1.125f);
 
+    // Parts that act on the contraption the console rides (see compat/create/contraption):
+    // Create's Contraption Controls, taken apart into a switch for actors and an elevator's panel
+    public static final PanelElementType<ActorSwitchElement> ACTOR_SWITCH =
+            PanelElementType.register("actor_switch", ActorSwitchElement::new, 3, 4, 2.25f);
+    public static final PanelElementType<FloorButtonElement> FLOOR_BUTTON =
+            PanelElementType.register("floor_button", FloorButtonElement::new, 3, 3, 1.5f);
+    public static final PanelElementType<FloorReadoutElement> FLOOR_READOUT =
+            PanelElementType.register("floor_readout", FloorReadoutElement::new, 8.5f, 4, 3.5f);
+
     // Passive; width is per-label, depth follows its text scale
     public static final PanelElementType<LabelElement> LABEL =
             PanelElementType.register("label", LabelElement::new,

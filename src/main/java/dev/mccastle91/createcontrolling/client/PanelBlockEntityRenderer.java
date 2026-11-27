@@ -19,6 +19,9 @@ import dev.mccastle91.createcontrolling.panel.element.LabelElement;
 import dev.mccastle91.createcontrolling.panel.element.LampElement;
 import dev.mccastle91.createcontrolling.panel.element.LatchingButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.NeedleMeterElement;
+import dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement;
+import dev.mccastle91.createcontrolling.panel.element.FloorButtonElement;
+import dev.mccastle91.createcontrolling.panel.element.FloorReadoutElement;
 import dev.mccastle91.createcontrolling.panel.element.NixieElement;
 import dev.mccastle91.createcontrolling.panel.element.NixieStripElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
@@ -134,6 +137,12 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
                 nixieStrip(p, font, panel, strip);
             else if (element instanceof DisplayBoardElement board)
                 displayBoard(p, font, panel, board);
+            else if (element instanceof ActorSwitchElement actors)
+                actorSwitch(p, w, d, actors.isOn(), actors.running(), actors.held(), color(actors));
+            else if (element instanceof FloorButtonElement floor)
+                floorButton(p, font, floor, w, d, h, color(floor));
+            else if (element instanceof FloorReadoutElement readout)
+                tubes(p, font, readout, readout.glyphs());
             else if (element.type().id().indexOf(':') >= 0)
                 // another mod's part with no renderer registered: a plain plate, so it can be seen and clicked
                 p.box(0, 0, 0, w, d, Math.max(0.25f, h), iron, 0xFFFFFFFF, light);
@@ -297,6 +306,36 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         p.box(-r, -r, 0, r, r, rod, iron, 0xFFFFFFFF, light);
         p.box(-r, -r, rod, r, r, AnalogLeverElement.HANDLE_LENGTH, component, color, light);
         p.pop();
+    }
+
+    /**
+     * A toggle switch on a wider plate, with a lamp in the corner like the
+     * analog lever's: green while the contraption's actors run, red while they
+     * are stopped (dim when the lever stopped them, bright when a signal holds them).
+     */
+    private void actorSwitch(ComponentPainter p, float w, float d, boolean on, boolean running, boolean held, int color) {
+        p.box(0, 0, 0, w, d, 0.25f, iron, 0xFFFFFFFF, light);
+        p.box(w / 2 - 0.65f, d / 2 - 0.65f, 0.25f, w / 2 + 0.65f, d / 2 + 0.65f, 0.6f, brass, 0xFFFFFFFF, light);
+        int lamp = running ? StyleColor.ACTORS_RUNNING.argb()
+                : scale(StyleColor.ACTORS_STOPPED.argb(), held ? 1f : 0.5f);
+        p.box(0.3f, 0.3f, 0.25f, 1.0f, 1.0f, 0.45f, component, lamp, running || held ? ComponentPainter.FULL_BRIGHT : light);
+        lever(p, w / 2, d / 2, 0.5f, on, LEVER_LENGTH, color);
+    }
+
+    /** A button with its floor's number on the cap, which glows while that floor is where the cabin is going. */
+    private void floorButton(ComponentPainter p, Font font, FloorButtonElement button, float w, float d, float h, int color) {
+        float bezel = 0.5f;
+        boolean lit = button.isLit();
+        int glow = lit ? ComponentPainter.FULL_BRIGHT : light;
+        p.box(0, 0, 0, w, d, bezel, brass, 0xFFFFFFFF, light);
+        float top = button.isPressed() ? h - bezel * 0.8f : h;
+        p.box(bezel, bezel, bezel, w - bezel, d - bezel, top, component, lit ? color : scale(color, 0.55f), glow);
+        String number = Integer.toString(button.floor());
+        float lineHeight = number.length() > 1 ? 1.2f : 1.6f;
+        float textWidth = font.width(number) * lineHeight / font.lineHeight;
+        p.faceText(font, number, button.x() + (w - textWidth) / 2,
+                button.y() + (d - lineHeight * ComponentPainter.GLYPH_HEIGHT) / 2, top + LIFT, lineHeight,
+                StyleColor.MARKING.argb(), glow);
     }
 
     /** The limits a knob marks: its lowest and highest value, where they aren't the scale's own ends. */

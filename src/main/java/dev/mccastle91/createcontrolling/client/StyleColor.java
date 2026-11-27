@@ -60,6 +60,10 @@ public enum StyleColor {
     POINTER("pointer", 0xFFF0F0F0),
     /** The small lamp on an analog lever. */
     LEVER_LAMP("lever_lamp", 0xFFFF2A1A),
+    /** The lamp on an actor switch while the contraption's actors run. */
+    ACTORS_RUNNING("actors_running", 0xFF3DDC5A),
+    /** The same lamp while they are stopped: dim for the lever, bright for a signal holding them. */
+    ACTORS_STOPPED("actors_stopped", 0xFFE0352B),
     /** A guarded switch's lever tip. */
     GUARDED_LEVER("guarded_lever", 0xFFDDDDDD),
     /** Nixie tube glass; its alpha is how see-through it is. */

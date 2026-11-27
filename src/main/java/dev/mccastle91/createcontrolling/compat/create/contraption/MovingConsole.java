@@ -9,6 +9,7 @@ import dev.mccastle91.createcontrolling.panel.ConsoleHost;
 import dev.mccastle91.createcontrolling.panel.PanelBlock;
 import dev.mccastle91.createcontrolling.panel.PanelBlockEntity;
 import dev.mccastle91.createcontrolling.panel.element.AnalogElement;
+import dev.mccastle91.createcontrolling.panel.element.FloorButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.util.McCompat;
 import net.minecraft.core.BlockPos;
@@ -45,6 +46,8 @@ public final class MovingConsole implements ConsoleHost {
 
     private final MovementContext context;
     private final PanelBlockEntity console;
+    /** The parts that act on the contraption itself: its actors, an elevator's floors. */
+    private final RidingParts parts = new RidingParts();
     private boolean syncDue;
     private boolean closed;
 
@@ -111,6 +114,7 @@ public final class MovingConsole implements ConsoleHost {
     /** Once a tick: button pulses run out, and viewers get what changed since the last tick. */
     void tick() {
         console.serverTick();
+        parts.tick(context, console);
         if (!syncDue)
             return;
         syncDue = false;
@@ -154,8 +158,10 @@ public final class MovingConsole implements ConsoleHost {
         PanelElement element = moving.console.getLayout().elementById(elementId).orElse(null);
         if (element == null || zone < 0 || zone >= element.pickBoxes().length)
             return;
-        moving.console.clickElement(elementId, zone,
+        boolean worked = moving.console.clickElement(elementId, zone,
                 Math.max(0, Math.min(element.width(), localX)), Math.max(0, Math.min(element.depth(), localY)), sneaking);
+        if (worked && element instanceof FloorButtonElement button)
+            RidingParts.callFloor(moving.context, button.floor());
     }
 
     /**

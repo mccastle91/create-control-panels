@@ -42,6 +42,7 @@ public class PanelBlockEntity extends BlockEntity {
     public static final String TAG_MATERIAL = "Material";
     public static final String TAG_MATERIAL_ITEM = "MaterialItem";
     public static final String TAG_RUNTIME = "Runtime";
+    public static final String TAG_RUNTIME_TEXT = "Text";
     public static final String TAG_RUNTIME_ID = "Id";
     public static final String TAG_RUNTIME_STRENGTH = "S";
     public static final String TAG_DISPLAY_LINES = "DisplayLines";
@@ -71,7 +72,7 @@ public class PanelBlockEntity extends BlockEntity {
     @org.jetbrains.annotations.Nullable
     private ConsoleHost host;
 
-    /** Text Display Links last sent, by line number. Never saved: links resend it within seconds of a load. */
+    /** Text Display Links last sent, by line number. Saved with the console, but not on its item. */
     private final Map<Integer, Component> displayLines = new HashMap<>();
 
     public PanelBlockEntity(BlockEntityType<? extends PanelBlockEntity> type, BlockPos pos, BlockState state) {
@@ -475,6 +476,19 @@ public class PanelBlockEntity extends BlockEntity {
             level.playSound(except, placeInWorld(), sound.event(), SoundSource.BLOCKS, sound.volume(), sound.pitch());
     }
 
+    /**
+     * A part's state was changed from outside the console, by what carries it
+     * (a lever that follows the contraption): the same path a click's change takes.
+     */
+    public void elementChanged(PanelElement element) {
+        onElementStateChanged(element);
+    }
+
+    /** Sends clients the parts' transient state after something outside the console changed it (a floor's lamp). */
+    public void syncRuntime() {
+        syncToClients();
+    }
+
     private void onElementStateChanged(PanelElement element) {
         playSound(element, null);
         notifyStrengthChanged(element.id());
@@ -818,8 +832,10 @@ public class PanelBlockEntity extends BlockEntity {
             ListTag runtime = tag.getList(TAG_RUNTIME, Tag.TAG_COMPOUND);
             for (int i = 0; i < runtime.size(); i++) {
                 CompoundTag entry = runtime.getCompound(i);
-                layout.elementById(entry.getUUID(TAG_RUNTIME_ID))
-                        .ifPresent(element -> element.applyDisplayStrength(entry.getInt(TAG_RUNTIME_STRENGTH)));
+                layout.elementById(entry.getUUID(TAG_RUNTIME_ID)).ifPresent(element -> {
+                    element.applyDisplayStrength(entry.getInt(TAG_RUNTIME_STRENGTH));
+                    element.applyDisplayText(entry.getString(TAG_RUNTIME_TEXT));
+                });
             }
         }
         displayLines.clear();
@@ -838,11 +854,14 @@ public class PanelBlockEntity extends BlockEntity {
         ListTag runtime = new ListTag();
         for (PanelElement element : layout.elements()) {
             int strength = element.displayStrength();
-            if (strength == 0)
+            String text = element.displayText();
+            if (strength == 0 && text.isEmpty())
                 continue;
             CompoundTag entry = new CompoundTag();
             entry.putUUID(TAG_RUNTIME_ID, element.id());
             entry.putInt(TAG_RUNTIME_STRENGTH, strength);
+            if (!text.isEmpty())
+                entry.putString(TAG_RUNTIME_TEXT, text);
             runtime.add(entry);
         }
         if (!runtime.isEmpty())

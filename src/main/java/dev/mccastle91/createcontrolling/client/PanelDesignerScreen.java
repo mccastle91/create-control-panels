@@ -1083,7 +1083,7 @@ public class PanelDesignerScreen extends Screen {
             return (active ? StyleColor.PART_GAUGE_ACTIVE : StyleColor.PART_GAUGE).argb(); // brass-housed gauges
         if (element instanceof DisplayBoardElement)
             return StyleColor.PART_BOARD.argb();
-        if (element instanceof NixieStripElement)
+        if (element instanceof NixieStripElement || element instanceof dev.mccastle91.createcontrolling.panel.element.FloorReadoutElement)
             return StyleColor.PART_GAUGE.argb();
         return StyleColor.PART_PLAIN.argb();
     }
@@ -1439,6 +1439,13 @@ public class PanelDesignerScreen extends Screen {
         if (e instanceof AnalogElement analog) {
             int fill = Math.round((x1 - x0 - 4) * analog.value() / 15f);
             graphics.fill(x0 + 2, y1 - 3, x0 + 2 + fill, y1 - 2, StyleColor.PART_MARK_LIGHT.argb());
+        } else if (e instanceof dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement actors) {
+            // the lever as on a toggle switch, and its lamp in the corner
+            graphics.fill(cx - 1, actors.isOn() ? y0 + 3 : cy, cx + 1, actors.isOn() ? cy : y1 - 3, StyleColor.PART_MARK_DARK.argb());
+            graphics.fill(x0 + 2, y0 + 2, x0 + 6, y0 + 6,
+                    (actors.running() ? StyleColor.ACTORS_RUNNING : StyleColor.ACTORS_STOPPED).argb());
+        } else if (e instanceof dev.mccastle91.createcontrolling.panel.element.FloorButtonElement floor) {
+            graphics.drawCenteredString(font, Integer.toString(floor.floor()), cx, cy - 4, StyleColor.TEXT.argb());
         } else if (e instanceof SwitchElement toggle) {
             graphics.fill(cx - 1, toggle.isOn() ? y0 + 2 : cy, cx + 1, toggle.isOn() ? cy : y1 - 2, StyleColor.PART_MARK_DARK.argb());
         } else if (e instanceof CoveredSwitchElement covered) {

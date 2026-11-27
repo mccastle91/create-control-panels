@@ -23,6 +23,17 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
  */
 public final class ConsoleMovement implements MovementBehaviour {
 
+    /**
+     * Create asks every actor this while the contraption assembles, then
+     * stops the actors on its list. A console's actor switches that are off
+     * put theirs on it here, so no drill or harvester gets a first tick.
+     */
+    @Override
+    public void startMoving(MovementContext context) {
+        if (context.world != null && !context.world.isClientSide)
+            RidingParts.stopAtAssembly(context);
+    }
+
     @Override
     public void tick(MovementContext context) {
         MovingConsole moving = MovingConsole.of(context);

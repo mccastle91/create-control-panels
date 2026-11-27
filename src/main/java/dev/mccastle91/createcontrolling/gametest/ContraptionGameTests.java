@@ -16,8 +16,12 @@ import dev.mccastle91.createcontrolling.CreateControlling;
 import dev.mccastle91.createcontrolling.compat.create.contraption.MovingConsole;
 import dev.mccastle91.createcontrolling.panel.FrequencyPair;
 import dev.mccastle91.createcontrolling.panel.PanelBlockEntity;
+import dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement;
+import dev.mccastle91.createcontrolling.panel.element.FloorButtonElement;
+import dev.mccastle91.createcontrolling.panel.element.FloorReadoutElement;
 import dev.mccastle91.createcontrolling.panel.element.KnobElement;
 import dev.mccastle91.createcontrolling.panel.element.LampElement;
+import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElements;
 import dev.mccastle91.createcontrolling.panel.element.SwitchElement;
 import dev.mccastle91.createcontrolling.registry.CCContent;
@@ -80,32 +84,10 @@ public class ContraptionGameTests {
         KnobElement knob = PanelElements.KNOB.create();
         knob.setPos(9, 2);
 
-        helper.setBlock(CABIN, AllBlocks.REDSTONE_CONTACT.getDefaultState()
-                .setValue(RedstoneContactBlock.FACING, Direction.NORTH));
-        helper.setBlock(FLOOR_CONTACT, AllBlocks.ELEVATOR_CONTACT.getDefaultState()
-                .setValue(ElevatorContactBlock.FACING, Direction.SOUTH));
-        helper.setBlock(PULLEY, AllBlocks.ELEVATOR_PULLEY.getDefaultState()
-                .setValue(ElevatorPulleyBlock.HORIZONTAL_FACING, Direction.NORTH));
-        helper.setBlock(MOTOR, AllBlocks.CREATIVE_MOTOR.getDefaultState()
-                .setValue(CreativeMotorBlock.FACING, Direction.EAST));
-        helper.setBlock(CONSOLE, CCContent.CONTROL_PANEL.getDefaultState()
-                .setValue(FaceAttachedHorizontalDirectionalBlock.FACE, AttachFace.WALL)
-                .setValue(FaceAttachedHorizontalDirectionalBlock.FACING, Direction.SOUTH));
-        PanelBlockEntity placed = console(helper);
-        placed.getLayout().addElement(toggle);
-        placed.getLayout().addElement(lamp);
-        placed.getLayout().addElement(knob);
-        placed.markLayoutChanged();
+        PanelBlockEntity placed = build(helper, toggle, lamp, knob);
         // as a Display Link leaves it: no link reaches the console once it rides
         placed.setDisplayLine(1, Component.literal(READOUT));
         placed.syncDisplayLines();
-        for (BlockPos link : new BlockPos[] { RECEIVER, TRANSMITTER }) {
-            helper.setBlock(link.below(), Blocks.STONE.defaultBlockState());
-            // placed as a transmitter, like a player's: see PanelLinkGameTests#placeCreateLink
-            helper.setBlock(link, AllBlocks.REDSTONE_LINK.getDefaultState()
-                    .setValue(RedstoneLinkBlock.RECEIVER, false)
-                    .setValue(RedstoneLinkBlock.FACING, Direction.UP));
-        }
         BlockPos local = CONSOLE.subtract(CABIN);
 
         helper.startSequence()
@@ -196,6 +178,207 @@ public class ContraptionGameTests {
                 })
                 .thenWaitUntil(() -> assertLinkPowered(helper, false))
                 .thenSucceed();
+    }
+
+    /**
+     * The actor switch does what a Contraption Controls block does, here to
+     * the cabin's own Redstone Contact (an actor like a drill, and one of the
+     * kinds a filter can name): off when the elevator assembles, it has the
+     * contact stopped before its first tick; thrown, it starts it; a signal on
+     * its frequency holds it stopped and lets go again; and when something
+     * else stops the contact, the lever follows.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400)
+    public void actorSwitchStopsAndStartsActors(GameTestHelper helper) {
+        ItemStack contact = AllBlocks.REDSTONE_CONTACT.asStack();
+        ActorSwitchElement actors = PanelElements.ACTOR_SWITCH.create();
+        actors.setPos(2, 2);
+        actors.setFilter(contact);
+        actors.setOn(false);
+        actors.setFrequency(freq(Items.FLINT, Items.FEATHER));
+        build(helper, actors);
+        BlockPos local = CONSOLE.subtract(CABIN);
+
+        helper.startSequence()
+                .thenWaitUntil(() -> setLinkFrequency(helper, TRANSMITTER, actors.frequency()))
+                .thenWaitUntil(() -> {
+                    if (pulley(helper).getSpeed() == 0)
+                        throw new GameTestAssertException("The motor has not reached the elevator pulley yet");
+                })
+                .thenExecute(() -> pulley(helper).clicked())
+                // stopped by the time the contraption exists: nothing has ticked yet
+                .thenWaitUntil(() -> assertActors(helper, contact, false, "an actor switch that was off at assembly"))
+                .thenExecuteAfter(2, () -> {
+                    AbstractContraptionEntity entity = elevator(helper);
+                    assertActors(helper, contact, false, "the switch still off two ticks on");
+                    MovingConsole.click(playerBeside(helper), entity.getId(), local, actors.id(), 0, 1f, 1f, false);
+                })
+                .thenWaitUntil(() -> {
+                    assertActors(helper, contact, true, "the switch thrown on");
+                    if (!riding(helper, local, actors).isOn())
+                        throw new GameTestAssertException("The lever should be on");
+                })
+                // a signal on its frequency holds the actors, whatever the lever says
+                .thenExecute(() -> transmitter(helper).transmit(15))
+                .thenWaitUntil(() -> {
+                    assertActors(helper, contact, false, "a signal on the switch's frequency");
+                    ActorSwitchElement part = riding(helper, local, actors);
+                    if (!part.held() || !part.isOn())
+                        throw new GameTestAssertException("The switch should be held by its signal with the lever still on");
+                })
+                .thenExecute(() -> transmitter(helper).transmit(0))
+                .thenWaitUntil(() -> assertActors(helper, contact, true, "the signal gone"))
+                // something else stops them, as a Contraption Controls block would: the lever follows
+                .thenExecuteAfter(2, () -> {
+                    com.simibubi.create.content.contraptions.Contraption contraption = elevator(helper).getContraption();
+                    contraption.getDisabledActors().add(contact.copy());
+                    contraption.setActorsActive(contact, false);
+                })
+                .thenWaitUntil(() -> {
+                    if (riding(helper, local, actors).isOn())
+                        throw new GameTestAssertException("The lever should follow actors stopped another way");
+                    assertActors(helper, contact, false, "actors stopped another way");
+                })
+                // and the console comes back with the lever where it was left
+                .thenExecuteAfter(2, () -> pulley(helper).clicked())
+                .thenWaitUntil(() -> {
+                    if (!(console(helper).getLayout().elementById(actors.id()).orElseThrow() instanceof ActorSwitchElement back)
+                            || back.isOn())
+                        throw new GameTestAssertException("The actor switch should come back from the elevator off");
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * An elevator panel: with two floors in the shaft, the readout names the
+     * floor the cabin stands at and that floor's button glows; a press on the
+     * other floor's button sends the cabin there, as picking it on a
+     * Contraption Controls block would.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 600)
+    public void floorButtonCallsTheCabin(GameTestHelper helper) {
+        FloorButtonElement ground = PanelElements.FLOOR_BUTTON.create();
+        ground.setPos(2, 2);
+        ground.setFloor(1);
+        FloorButtonElement upper = PanelElements.FLOOR_BUTTON.create();
+        upper.setPos(6, 2);
+        upper.setFloor(2);
+        FloorReadoutElement readout = PanelElements.FLOOR_READOUT.create();
+        readout.setPos(2, 8);
+        build(helper, ground, upper, readout);
+        helper.setBlock(FLOOR_CONTACT.above(), AllBlocks.ELEVATOR_CONTACT.getDefaultState()
+                .setValue(ElevatorContactBlock.FACING, Direction.SOUTH));
+        BlockPos local = CONSOLE.subtract(CABIN);
+        double[] startY = new double[1];
+
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    if (pulley(helper).getSpeed() == 0)
+                        throw new GameTestAssertException("The motor has not reached the elevator pulley yet");
+                })
+                .thenExecute(() -> pulley(helper).clicked())
+                // Create hands out the floors' names a few ticks after assembly
+                .thenWaitUntil(() -> {
+                    AbstractContraptionEntity entity = elevator(helper);
+                    ElevatorContraption cabin = (ElevatorContraption) entity.getContraption();
+                    if (cabin.namesList.size() != 2)
+                        throw new GameTestAssertException("Expected two floors, found " + cabin.namesList.size());
+                    String name = floorName(cabin, 0);
+                    if (name.isEmpty())
+                        throw new GameTestAssertException("The lower floor has no name to show");
+                    if (!name.equals(riding(helper, local, readout).displayText()))
+                        throw new GameTestAssertException("The readout should name the lower floor '" + name + "', shows '"
+                                + riding(helper, local, readout).displayText() + "'");
+                    if (!riding(helper, local, ground).isLit() || riding(helper, local, upper).isLit())
+                        throw new GameTestAssertException("Only the lower floor's button should glow at the start");
+                    startY[0] = entity.getY();
+                })
+                .thenExecute(() -> MovingConsole.click(playerBeside(helper), elevator(helper).getId(), local,
+                        upper.id(), 0, 1f, 1f, false))
+                .thenWaitUntil(() -> {
+                    AbstractContraptionEntity entity = elevator(helper);
+                    if (entity.getY() < startY[0] + 0.99)
+                        throw new GameTestAssertException("The cabin has not reached the upper floor: " + entity.getY());
+                    String name = floorName((ElevatorContraption) entity.getContraption(), 1);
+                    if (!name.equals(riding(helper, local, readout).displayText()))
+                        throw new GameTestAssertException("The readout should name the upper floor '" + name + "', shows '"
+                                + riding(helper, local, readout).displayText() + "'");
+                    if (riding(helper, local, ground).isLit() || !riding(helper, local, upper).isLit())
+                        throw new GameTestAssertException("Only the upper floor's button should glow now");
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * The elevator the tests share: a cabin of one Redstone Contact with a
+     * wall console on it carrying {@code parts}, an Elevator Contact for it to
+     * stop at, the pulley and its motor, and two of Create's links to the side.
+     */
+    private static PanelBlockEntity build(GameTestHelper helper, PanelElement... parts) {
+        helper.setBlock(CABIN, AllBlocks.REDSTONE_CONTACT.getDefaultState()
+                .setValue(RedstoneContactBlock.FACING, Direction.NORTH));
+        helper.setBlock(FLOOR_CONTACT, AllBlocks.ELEVATOR_CONTACT.getDefaultState()
+                .setValue(ElevatorContactBlock.FACING, Direction.SOUTH));
+        helper.setBlock(PULLEY, AllBlocks.ELEVATOR_PULLEY.getDefaultState()
+                .setValue(ElevatorPulleyBlock.HORIZONTAL_FACING, Direction.NORTH));
+        helper.setBlock(MOTOR, AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                .setValue(CreativeMotorBlock.FACING, Direction.EAST));
+        helper.setBlock(CONSOLE, CCContent.CONTROL_PANEL.getDefaultState()
+                .setValue(FaceAttachedHorizontalDirectionalBlock.FACE, AttachFace.WALL)
+                .setValue(FaceAttachedHorizontalDirectionalBlock.FACING, Direction.SOUTH));
+        PanelBlockEntity placed = console(helper);
+        for (PanelElement part : parts)
+            placed.getLayout().addElement(part);
+        placed.markLayoutChanged();
+        for (BlockPos link : new BlockPos[] { RECEIVER, TRANSMITTER }) {
+            helper.setBlock(link.below(), Blocks.STONE.defaultBlockState());
+            // placed as a transmitter, like a player's: see PanelLinkGameTests#placeCreateLink
+            helper.setBlock(link, AllBlocks.REDSTONE_LINK.getDefaultState()
+                    .setValue(RedstoneLinkBlock.RECEIVER, false)
+                    .setValue(RedstoneLinkBlock.FACING, Direction.UP));
+        }
+        return placed;
+    }
+
+    /** The part with {@code part}'s id on the console the elevator carries, as it is now. */
+    @SuppressWarnings("unchecked")
+    private static <T extends PanelElement> T riding(GameTestHelper helper, BlockPos local, T part) {
+        MovingConsole moving = MovingConsole.at(elevator(helper), local);
+        if (moving == null)
+            throw new GameTestAssertException("No running console on the elevator");
+        return (T) moving.console().getLayout().elementById(part.id()).orElseThrow();
+    }
+
+    /** Whether the cabin's Redstone Contact runs, by the contraption's list and by the actor itself. */
+    private static void assertActors(GameTestHelper helper, ItemStack kind, boolean running, String after) {
+        com.simibubi.create.content.contraptions.Contraption contraption = elevator(helper).getContraption();
+        var actor = contraption.getActorAt(BlockPos.ZERO);
+        if (actor == null || actor.right == null)
+            throw new GameTestAssertException("The cabin's contact is not an actor of the elevator");
+        if (contraption.isActorTypeDisabled(kind) == running || actor.right.disabled == running)
+            throw new GameTestAssertException("After " + after + " the contact should be " + (running ? "running" : "stopped")
+                    + ": on the list=" + contraption.isActorTypeDisabled(kind) + ", actor disabled=" + actor.right.disabled);
+    }
+
+    private static String floorName(ElevatorContraption cabin, int index) {
+        return cabin.namesList.get(index).getSecond().getFirst();
+    }
+
+    private static Player playerBeside(GameTestHelper helper) {
+        //? if >=1.21 {
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        //?} else {
+        /*Player player = helper.makeMockPlayer();
+        *///?}
+        Vec3 beside = Vec3.atCenterOf(helper.absolutePos(CONSOLE.south()));
+        player.setPos(beside.x, beside.y - 0.5, beside.z);
+        return player;
+    }
+
+    private static RedstoneLinkBlockEntity transmitter(GameTestHelper helper) {
+        if (!(helper.getBlockEntity(TRANSMITTER) instanceof RedstoneLinkBlockEntity link))
+            throw new GameTestAssertException("Create link block entity missing");
+        return link;
     }
 
     private static PanelBlockEntity console(GameTestHelper helper) {
