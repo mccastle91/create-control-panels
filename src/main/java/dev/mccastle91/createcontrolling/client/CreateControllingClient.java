@@ -58,6 +58,8 @@ public final class CreateControllingClient {
         CCClientHooks.SEND_BLUEPRINT_EDIT = CCNetwork::sendBlueprintEditToServer;
         CCClientHooks.CLIENT_PLAYER = () -> Minecraft.getInstance().player;
         CCClientHooks.SHIFT_DOWN = net.minecraft.client.gui.screens.Screen::hasShiftDown;
+        dev.mccastle91.createcontrolling.compat.create.contraption.ConsoleMovingInteraction.CLIENT_CLICK = ContraptionConsoles::click;
+        dev.mccastle91.createcontrolling.network.ContraptionSyncPayload.CLIENT_HANDLER = ContraptionConsoles::sync;
         modEventBus.addListener(CreateControllingClient::clientSetup);
         modEventBus.addListener(CreateControllingClient::registerRenderers);
         modEventBus.addListener(CreateControllingClient::swapConsoleModels);

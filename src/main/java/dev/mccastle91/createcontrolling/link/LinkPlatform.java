@@ -7,6 +7,7 @@ import net.minecraft.world.level.Level;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 /**
  * The seam between the loader-agnostic panel logic and Create's redstone
@@ -19,6 +20,8 @@ public interface LinkPlatform {
     /**
      * Join the network on the given frequency. Server side only.
      *
+     * @param pos                 where the element is, asked whenever range is
+     *                            measured: a console on a contraption moves
      * @param listening           true for receivers (they get {@code receivedCallback}
      *                            pushes), false for transmitters (queried via
      *                            {@code transmittedStrength})
@@ -27,6 +30,6 @@ public interface LinkPlatform {
      * @param alive               false once the owning block entity is gone;
      *                            lets the network prune stale entries
      */
-    LinkPort createPort(Level level, BlockPos pos, FrequencyPair frequency, boolean listening,
+    LinkPort createPort(Level level, Supplier<BlockPos> pos, FrequencyPair frequency, boolean listening,
                         IntSupplier transmittedStrength, IntConsumer receivedCallback, BooleanSupplier alive);
 }

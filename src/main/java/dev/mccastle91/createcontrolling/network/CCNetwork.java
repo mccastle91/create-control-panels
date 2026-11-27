@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
 //? if neoforge {
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -41,10 +42,30 @@ public final class CCNetwork {
                     if (context.player() instanceof ServerPlayer player)
                         payload.handle(player);
                 }));
+        event.registrar(VERSION).playToServer(ContraptionClickPayload.TYPE, ContraptionClickPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player)
+                        payload.handle(player);
+                }));
+        event.registrar(VERSION).playToClient(ContraptionSyncPayload.TYPE, ContraptionSyncPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(payload::handleClient));
     }
 
     public static void sendEditToServer(BlockPos pos, CompoundTag op) {
         PacketDistributor.sendToServer(new PanelEditPayload(pos, op));
+    }
+
+    public static void sendToServer(ContraptionClickPayload payload) {
+        PacketDistributor.sendToServer(payload);
+    }
+
+    /** To every player who has the entity (a contraption) in view. */
+    public static void sendToTracking(Entity entity, ContraptionSyncPayload payload) {
+        PacketDistributor.sendToPlayersTrackingEntity(entity, payload);
+    }
+
+    public static void sendToPlayer(ServerPlayer player, ContraptionSyncPayload payload) {
+        PacketDistributor.sendToPlayer(player, payload);
     }
 
     public static void sendBlueprintEditToServer(InteractionHand hand, CompoundTag op) {
@@ -73,10 +94,37 @@ public final class CCNetwork {
                         payload.handle(player);
                 })
                 .add();
+        CHANNEL.messageBuilder(ContraptionClickPayload.class, 2, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ContraptionClickPayload::write)
+                .decoder(ContraptionClickPayload::read)
+                .consumerMainThread((payload, context) -> {
+                    ServerPlayer player = context.get().getSender();
+                    if (player != null)
+                        payload.handle(player);
+                })
+                .add();
+        CHANNEL.messageBuilder(ContraptionSyncPayload.class, 3, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ContraptionSyncPayload::write)
+                .decoder(ContraptionSyncPayload::read)
+                .consumerMainThread((payload, context) -> payload.handleClient())
+                .add();
     }
 
     public static void sendEditToServer(BlockPos pos, CompoundTag op) {
         CHANNEL.sendToServer(new PanelEditPayload(pos, op));
+    }
+
+    public static void sendToServer(ContraptionClickPayload payload) {
+        CHANNEL.sendToServer(payload);
+    }
+
+    /^* To every player who has the entity (a contraption) in view. ^/
+    public static void sendToTracking(Entity entity, ContraptionSyncPayload payload) {
+        CHANNEL.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY.with(() -> entity), payload);
+    }
+
+    public static void sendToPlayer(ServerPlayer player, ContraptionSyncPayload payload) {
+        CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player), payload);
     }
 
     public static void sendBlueprintEditToServer(InteractionHand hand, CompoundTag op) {

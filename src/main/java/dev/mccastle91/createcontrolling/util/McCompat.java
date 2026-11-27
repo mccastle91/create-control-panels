@@ -107,6 +107,15 @@ public final class McCompat {
         *///?}
     }
 
+    /** How far the player can reach to use a block, in blocks. */
+    public static double blockReach(net.minecraft.world.entity.player.Player player) {
+        //? if >=1.21 {
+        return player.blockInteractionRange();
+        //?} else {
+        /*return player.getBlockReach();
+        *///?}
+    }
+
     public static boolean canReach(ServerPlayer player, BlockPos pos) {
         //? if >=1.21 {
         return player.canInteractWithBlock(pos, 4.5);

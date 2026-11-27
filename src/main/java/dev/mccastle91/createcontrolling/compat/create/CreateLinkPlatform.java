@@ -15,11 +15,12 @@ import net.minecraft.world.level.Level;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 /**
  * Binds panel elements into Create's Redstone Link network. One
  * {@link IRedstoneLinkable} per panel element (all sharing the panel's
- * position), mirroring {@code LinkBehaviour}'s lifecycle: add on create,
+ * position, which moves when the console rides a contraption), mirroring {@code LinkBehaviour}'s lifecycle: add on create,
  * remove on unload/delete, {@code updateNetworkOf} on value change.
  * Panels therefore interoperate with vanilla Create links, Linked
  * Controllers, and anything else on the network.
@@ -27,7 +28,7 @@ import java.util.function.IntSupplier;
 public final class CreateLinkPlatform implements LinkPlatform {
 
     @Override
-    public LinkPort createPort(Level level, BlockPos pos, FrequencyPair frequency, boolean listening,
+    public LinkPort createPort(Level level, Supplier<BlockPos> pos, FrequencyPair frequency, boolean listening,
                                IntSupplier transmittedStrength, IntConsumer receivedCallback, BooleanSupplier alive) {
         PanelLinkPort port = new PanelLinkPort(level, pos, frequency, listening,
                 transmittedStrength, receivedCallback, alive);
@@ -39,7 +40,7 @@ public final class CreateLinkPlatform implements LinkPlatform {
     private static final class PanelLinkPort implements IRedstoneLinkable, LinkPort {
 
         private final Level level;
-        private final BlockPos pos;
+        private final Supplier<BlockPos> pos;
         private final Couple<Frequency> networkKey;
         private final boolean listening;
         private final IntSupplier transmittedStrength;
@@ -48,7 +49,7 @@ public final class CreateLinkPlatform implements LinkPlatform {
 
         private boolean removed;
 
-        private PanelLinkPort(Level level, BlockPos pos, FrequencyPair frequency, boolean listening,
+        private PanelLinkPort(Level level, Supplier<BlockPos> pos, FrequencyPair frequency, boolean listening,
                               IntSupplier transmittedStrength, IntConsumer receivedCallback, BooleanSupplier alive) {
             this.level = level;
             this.pos = pos;
@@ -89,7 +90,7 @@ public final class CreateLinkPlatform implements LinkPlatform {
 
         @Override
         public BlockPos getLocation() {
-            return pos;
+            return pos.get();
         }
 
         // LinkPort
@@ -97,6 +98,16 @@ public final class CreateLinkPlatform implements LinkPlatform {
         @Override
         public void notifyStrengthChanged() {
             if (!removed)
+                Create.REDSTONE_LINK_NETWORK_HANDLER.updateNetworkOf(level, this);
+        }
+
+        @Override
+        public void positionChanged() {
+            if (removed)
+                return;
+            if (listening)
+                refreshReceivedStrength();
+            else if (getTransmittedStrength() > 0)
                 Create.REDSTONE_LINK_NETWORK_HANDLER.updateNetworkOf(level, this);
         }
 

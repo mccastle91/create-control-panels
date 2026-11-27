@@ -67,6 +67,10 @@ public class PanelBlockEntity extends BlockEntity {
     /** Live network connections, one per linkable element; server only. */
     private final Map<UUID, LinkPort> linkPorts = new HashMap<>();
 
+    /** What carries this console when it is not a block in the world (a contraption); null for a placed console. */
+    @org.jetbrains.annotations.Nullable
+    private ConsoleHost host;
+
     /** Text Display Links last sent, by line number. Never saved: links resend it within seconds of a load. */
     private final Map<Integer, Component> displayLines = new HashMap<>();
 
@@ -90,6 +94,32 @@ public class PanelBlockEntity extends BlockEntity {
 
     public PanelLayout getLayout() {
         return layout;
+    }
+
+    /**
+     * Hands this console to a host: from then on it never touches the world
+     * at its own position (which is not a place in the world), and asks the
+     * host instead. Set before the console is given its data and level.
+     */
+    public void setHost(ConsoleHost host) {
+        this.host = host;
+    }
+
+    /** Where the console is in the world: its own position, or wherever its host has carried it. */
+    private BlockPos placeInWorld() {
+        return host != null ? host.position() : worldPosition;
+    }
+
+    private boolean linkAlive() {
+        return !isRemoved() && (host == null || host.alive());
+    }
+
+    @Override
+    public void setChanged() {
+        if (host == null)
+            super.setChanged();
+        else if (level != null && !level.isClientSide)
+            host.changed();
     }
 
     public void setLayout(PanelLayout layout) {
@@ -228,7 +258,7 @@ public class PanelBlockEntity extends BlockEntity {
      * console that copies nothing gives off no light.
      */
     public void updateMaterialLight() {
-        if (level == null || fixedCasing() != ConsoleCasing.COPYCAT)
+        if (level == null || host != null || fixedCasing() != ConsoleCasing.COPYCAT)
             return;
         //? if neoforge {
         var lights = level.getAuxLightManager(worldPosition);
@@ -272,7 +302,7 @@ public class PanelBlockEntity extends BlockEntity {
     }
 
     private void refreshNeighbourConnections() {
-        if (level != null && !level.isClientSide)
+        if (level != null && !level.isClientSide && host == null)
             PanelBlock.refreshConnections(level, worldPosition);
     }
 
@@ -308,7 +338,11 @@ public class PanelBlockEntity extends BlockEntity {
     }
 
     private void syncToClients() {
-        if (level != null && !level.isClientSide)
+        if (level == null || level.isClientSide)
+            return;
+        if (host != null)
+            host.sync();
+        else
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
@@ -351,11 +385,11 @@ public class PanelBlockEntity extends BlockEntity {
                 continue;
             if (!element.isTransmitter() && !element.isReceiver())
                 continue;
-            LinkPort port = CCLink.PLATFORM.createPort(level, worldPosition,
+            LinkPort port = CCLink.PLATFORM.createPort(level, this::placeInWorld,
                     element.frequency(), element.isReceiver(),
                     element::transmittedStrength,
                     strength -> onStrengthReceived(element, strength),
-                    () -> !isRemoved());
+                    this::linkAlive);
             linkPorts.put(element.id(), port);
         }
         // A receiver just unlinked forgets the network's last value: from now
@@ -370,8 +404,18 @@ public class PanelBlockEntity extends BlockEntity {
         }
         if (anyReset)
             syncToClients();
-        for (LayoutListener listener : layoutListeners)
-            listener.layoutReady(this);
+        // listeners know consoles by their place in the world, which a hosted one doesn't have
+        if (host == null)
+            for (LayoutListener listener : layoutListeners)
+                listener.layoutReady(this);
+    }
+
+    /**
+     * The console has been carried to another block position: what its parts
+     * hear, and who hears them, is measured from there.
+     */
+    public void linkPositionChanged() {
+        linkPorts.values().forEach(LinkPort::positionChanged);
     }
 
     private void onStrengthReceived(PanelElement element, int strength) {
@@ -427,7 +471,7 @@ public class PanelBlockEntity extends BlockEntity {
     private void playSound(PanelElement element, @org.jetbrains.annotations.Nullable Player except) {
         PartSound sound = element.takeSound();
         if (sound != null && level != null && !level.isClientSide)
-            level.playSound(except, worldPosition, sound.event(), SoundSource.BLOCKS, sound.volume(), sound.pitch());
+            level.playSound(except, placeInWorld(), sound.event(), SoundSource.BLOCKS, sound.volume(), sound.pitch());
     }
 
     private void onElementStateChanged(PanelElement element) {
@@ -490,7 +534,7 @@ public class PanelBlockEntity extends BlockEntity {
     }
 
     private void signalMayHaveChanged(PanelElement element) {
-        if (signalListeners.isEmpty() || level == null || level.isClientSide
+        if (signalListeners.isEmpty() || level == null || level.isClientSide || host != null
                 || !element.isTransmitter() && !element.isReceiver())
             return;
         int strength = signalOf(element);
@@ -591,8 +635,8 @@ public class PanelBlockEntity extends BlockEntity {
         if (CCLink.PLATFORM == null)
             return;
         UUID id = element.id();
-        drivePorts.put(id, CCLink.PLATFORM.createPort(level, worldPosition, element.frequency(), false,
-                () -> drivenStrengths.getOrDefault(id, 0), strength -> { }, () -> !isRemoved()));
+        drivePorts.put(id, CCLink.PLATFORM.createPort(level, this::placeInWorld, element.frequency(), false,
+                () -> drivenStrengths.getOrDefault(id, 0), strength -> { }, this::linkAlive));
     }
 
     /** Optional integrations' per-console objects, one of each kind (see compat/computercraft). */

@@ -1,6 +1,8 @@
 package dev.mccastle91.createcontrolling.registry;
 
 import com.simibubi.create.api.behaviour.display.DisplayTarget;
+import com.simibubi.create.api.behaviour.interaction.MovingInteractionBehaviour;
+import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.api.registry.CreateRegistries;
 import com.tterrag.registrate.Registrate;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
@@ -10,6 +12,8 @@ import dev.mccastle91.createcontrolling.CreateControlling;
 import dev.mccastle91.createcontrolling.compat.create.ConsoleDisplayTarget;
 import dev.mccastle91.createcontrolling.compat.create.CopycatConsoleBlock;
 import dev.mccastle91.createcontrolling.compat.create.WrenchablePanelBlock;
+import dev.mccastle91.createcontrolling.compat.create.contraption.ConsoleMovement;
+import dev.mccastle91.createcontrolling.compat.create.contraption.ConsoleMovingInteraction;
 //? if neoforge {
 import dev.mccastle91.createcontrolling.compat.drivebysable.DriveBySableCompat;
 //?}
@@ -99,9 +103,16 @@ public final class CCContent {
         CCTypes.PANEL_BLOCK_ENTITY = CONTROL_PANEL_ENTITY::get;
     }
 
-    /** Once registries are frozen: makes consoles something a Display Link can target. */
+    /** Once registries are frozen: makes consoles something a Display Link can target... */
     public static void commonSetup() {
         DisplayTarget.BY_BLOCK.register(CONTROL_PANEL.get(), CONSOLE_DISPLAY_TARGET.get());
         DisplayTarget.BY_BLOCK.register(COPYCAT_CONTROL_PANEL.get(), CONSOLE_DISPLAY_TARGET.get());
+        // ...and something that keeps working, and can be clicked, on a contraption
+        ConsoleMovement movement = new ConsoleMovement();
+        ConsoleMovingInteraction interaction = new ConsoleMovingInteraction();
+        for (net.minecraft.world.level.block.Block console : java.util.List.of(CONTROL_PANEL.get(), COPYCAT_CONTROL_PANEL.get())) {
+            MovementBehaviour.REGISTRY.register(console, movement);
+            MovingInteractionBehaviour.REGISTRY.register(console, interaction);
+        }
     }
 }
