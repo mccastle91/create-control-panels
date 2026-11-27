@@ -298,6 +298,7 @@ public class PanelBlockEntity extends BlockEntity {
     }
 
     public void syncDisplayLines() {
+        setChanged();
         syncToClients();
     }
 
@@ -688,6 +689,16 @@ public class PanelBlockEntity extends BlockEntity {
         if (level != null)
             saveToItem(stack, level.registryAccess());
     }
+
+    @Override
+    public void saveToItem(net.minecraft.world.item.ItemStack stack, HolderLookup.Provider registries) {
+        savingToItem = true;
+        try {
+            super.saveToItem(stack, registries);
+        } finally {
+            savingToItem = false;
+        }
+    }
     //?} else {
     /*@Override
     protected void saveAdditional(CompoundTag tag) {
@@ -709,7 +720,20 @@ public class PanelBlockEntity extends BlockEntity {
     public void writeToItem(net.minecraft.world.item.ItemStack stack) {
         saveToItem(stack);
     }
+
+    @Override
+    public void saveToItem(net.minecraft.world.item.ItemStack stack) {
+        savingToItem = true;
+        try {
+            super.saveToItem(stack);
+        } finally {
+            savingToItem = false;
+        }
+    }
     *///?}
+
+    /** An item carries the design, not what a Display Link last wrote on it. */
+    private boolean savingToItem;
 
     private void writeData(CompoundTag tag, HolderLookup.Provider registries) {
         tag.put(TAG_LAYOUT, layout.save(registries));
@@ -724,6 +748,19 @@ public class PanelBlockEntity extends BlockEntity {
             if (!materialItem.isEmpty())
                 tag.put(TAG_MATERIAL_ITEM, McCompat.saveStack(materialItem, registries));
         }
+        // Saved like Create's own displays keep their text: a console taken along
+        // by a contraption is rebuilt from this data, and no Display Link reaches it there
+        if (savingToItem)
+            return;
+        ListTag lines = new ListTag();
+        displayLines.forEach((line, text) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putInt(TAG_DISPLAY_LINE, line);
+            entry.putString(TAG_DISPLAY_TEXT, McCompat.componentToJson(text, registries));
+            lines.add(entry);
+        });
+        if (!lines.isEmpty())
+            tag.put(TAG_DISPLAY_LINES, lines);
     }
 
     private void readData(CompoundTag tag, HolderLookup.Provider registries) {
@@ -810,15 +847,6 @@ public class PanelBlockEntity extends BlockEntity {
         }
         if (!runtime.isEmpty())
             tag.put(TAG_RUNTIME, runtime);
-        ListTag lines = new ListTag();
-        displayLines.forEach((line, text) -> {
-            CompoundTag entry = new CompoundTag();
-            entry.putInt(TAG_DISPLAY_LINE, line);
-            entry.putString(TAG_DISPLAY_TEXT, McCompat.componentToJson(text, registries));
-            lines.add(entry);
-        });
-        if (!lines.isEmpty())
-            tag.put(TAG_DISPLAY_LINES, lines);
         return tag;
     }
 

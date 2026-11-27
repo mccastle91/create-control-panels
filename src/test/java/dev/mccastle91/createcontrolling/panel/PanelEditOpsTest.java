@@ -765,14 +765,25 @@ class PanelEditOpsTest {
     }
 
     @Test
-    void displayLinesSyncToClientsButAreNeverSaved() {
+    void displayLinesSyncToClientsAndAreSavedWithTheConsoleButNotOnItsItem() {
         PanelBlockEntity panel = newPanel();
         assertTrue(panel.setDisplayLine(2, Component.literal("230 V")));
         assertFalse(panel.setDisplayLine(2, Component.literal("230 V")), "same text: nothing to sync");
 
         CompoundTag update = panel.getUpdateTag(registries);
         assertTrue(update.contains(PanelBlockEntity.TAG_DISPLAY_LINES));
-        assertFalse(panel.saveWithoutMetadata(registries).contains(PanelBlockEntity.TAG_DISPLAY_LINES));
+        // a contraption rebuilds the console it carries from the saved data, and no Display Link reaches it there
+        assertTrue(panel.saveWithoutMetadata(registries).contains(PanelBlockEntity.TAG_DISPLAY_LINES));
+        PanelBlockEntity reloaded = newPanel();
+        reloaded.loadAdditional(panel.saveWithoutMetadata(registries), registries);
+        assertEquals("230 V", reloaded.displayLine(2).getString());
+        // the item carries the design only
+        net.minecraft.world.item.ItemStack item = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FURNACE);
+        panel.saveToItem(item, registries);
+        CompoundTag onItem = item.get(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA).copyTag();
+        assertTrue(onItem.contains(PanelBlockEntity.TAG_LAYOUT));
+        assertFalse(onItem.contains(PanelBlockEntity.TAG_DISPLAY_LINES));
+        assertTrue(panel.saveWithoutMetadata(registries).contains(PanelBlockEntity.TAG_DISPLAY_LINES), "saving the item changes nothing");
 
         PanelBlockEntity client = newPanel();
         client.loadAdditional(update, registries);
