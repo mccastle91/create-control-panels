@@ -32,10 +32,17 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Labels shrink to fit their buttons; French translation shipped | GH #4 | Added on `main` after the merge. The French file predates 0.2.7: 36 lines (33 new since then, 3 that described the old blueprint) were translated by Claude and await the contributor's review. Two palette names are still cut short at the smallest size ("Bnd de tubes Nixie", "Panneau d'affichage"). Not seen in-game. |
 | Add-on API, version 1 | Author | Components with cost, options and renderer; reading and working consoles. See `docs/api.md`. |
 
+## Built after 0.2.8, awaiting the in-game check
+
+| Feature | Source | Notes |
+|---|---|---|
+| Consoles work on Create contraptions (elevators, trains and the rest) | The author, 2026-11-26 | Branch `contraption-consoles`. Parts stay on their frequencies and can be clicked while assembled. A game test covers the server side on a real elevator; nothing has been seen in-game. |
+
 ## Planned for the main mod
 
 | Feature | Source | Notes |
 |---|---|---|
+| Contraption consoles: part highlight and hold-and-drag | Follow-up to the contraption work | Stage 3 of the proposal the author approved on 2026-11-26; to do after the in-game check. |
 | Goggles overlay redesign, with a per-console off switch | Earlier list, CF (glitchtechscience) | The overlay is switched off since 0.2.5. |
 | Icon palette in the designer | Earlier list | Deferred from the 0.2.6 reskin. |
 | Small animations (button press, lever swing) | Earlier list | Keep them simple. |
@@ -47,6 +54,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 
 | Feature | Source | Notes |
 |---|---|---|
+| Elevator floor parts: a button that calls a floor, a lamp or nixie for the current one | Suggested by Claude, 2026-11-26 | Create's "call to floor" is reachable from the server. Until then a button linked to a receiver at a floor's Elevator Contact does the same. |
 | Original Drive-By-Wire and its Sable port | CF and YouTube (scaleshapes) | 0.2.7 supports Drive-By-Sable only, on 1.21.1. The requester asked for both. |
 | Trim chosen per component | Earlier note | Left out when trim started following the casing. |
 | Stop marks for Min/Max on the analog lever | Earlier note | Knobs and sliders have them; the lever doesn't. |
@@ -78,6 +86,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 
 ## Still to verify
 
+- Consoles on contraptions in-game: how they are drawn, clicking parts while moving, sounds, trains and other contraption types
 - 0.2.6 CC changes and the designer reskin on 1.20.1; reskin themes other than brass
 - Weathered Iron casing in-game; the seam-line fix on joined consoles
 - Cabled consoles on a moving vehicle, including assembling one
