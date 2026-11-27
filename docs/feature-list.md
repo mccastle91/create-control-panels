@@ -38,6 +38,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 |---|---|---|
 | Consoles work on Create contraptions (elevators, trains and the rest) | The author, 2026-11-26 | Branch `contraption-consoles`. Parts stay on their frequencies and can be clicked while assembled. The author tried clicks on an elevator on 2026-11-26: they work, and editing is rightly off. Readouts lost their Display Link text on assembly; fixed the same day, not yet seen. |
 | Contraption consoles: part highlight, hold-and-drag and sneak-scroll | Follow-up to the contraption work | Stage 3, built 2026-11-26 on the same branch. Aiming follows the console where it is drawn, between ticks. Nothing of it has been seen in-game. |
+| Contraption Controls as console parts: Actor Switch (with a frequency that holds the actors stopped), Floor Button, Floor Readout | The author, 2026-11-26 | Same branch. Researched from Create's source, proposed by Claude, approved by the author with the frequency added ("if it causes problems we can take it out"). Game tests on real elevators pass on both versions; nothing has been seen in-game. The palette now has a second page. |
 
 ## Planned for the main mod
 
@@ -54,8 +55,6 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 
 | Feature | Source | Notes |
 |---|---|---|
-| Elevator floor parts: a button that calls a floor, a lamp or nixie for the current one | Suggested by Claude, 2026-11-26 | Create's "call to floor" is reachable from the server. Until then a button linked to a receiver at a floor's Elevator Contact does the same. |
-| Contraption Controls as console parts: an actor switch (drills, doors and the rest on or off) and an elevator floor selector | The author, 2026-11-26 | Researched from Create's source the same day; both can be done with Create's public methods and its own packets, with no Controls block on the contraption. Awaiting the author's decision on Claude's proposal. |
 | Original Drive-By-Wire and its Sable port | CF and YouTube (scaleshapes) | 0.2.7 supports Drive-By-Sable only, on 1.21.1. The requester asked for both. |
 | Trim chosen per component | Earlier note | Left out when trim started following the casing. |
 | Stop marks for Min/Max on the analog lever | Earlier note | Knobs and sliders have them; the lever doesn't. |
@@ -88,6 +87,7 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 ## Still to verify
 
 - Consoles on contraptions in-game: the part highlight, hold-and-drag and sneak-scroll while moving, readouts keeping their text, trains and other contraption types
+- The Actor Switch, Floor Button and Floor Readout in-game: their look, the designer's Actors and Floor steppers, the palette's second page, a switch against real drills and doors (and train doors across carriages), a Redstone Link holding the actors off, an elevator with several named floors
 - 0.2.6 CC changes and the designer reskin on 1.20.1; reskin themes other than brass
 - Weathered Iron casing in-game; the seam-line fix on joined consoles
 - Cabled consoles on a moving vehicle, including assembling one
