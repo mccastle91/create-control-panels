@@ -8,6 +8,7 @@ import dev.mccastle91.createcontrolling.network.ContraptionSyncPayload;
 import dev.mccastle91.createcontrolling.panel.ConsoleHost;
 import dev.mccastle91.createcontrolling.panel.PanelBlock;
 import dev.mccastle91.createcontrolling.panel.PanelBlockEntity;
+import dev.mccastle91.createcontrolling.panel.element.AnalogElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
 import dev.mccastle91.createcontrolling.util.McCompat;
 import net.minecraft.core.BlockPos;
@@ -147,22 +148,42 @@ public final class MovingConsole implements ConsoleHost {
      */
     public static void click(Player player, int entityId, BlockPos localPos, UUID elementId, int zone,
                              float localX, float localY, boolean sneaking) {
-        if (player.isSpectator()
-                || !(player.level().getEntity(entityId) instanceof AbstractContraptionEntity entity)
-                || entity.getContraption() == null || Float.isNaN(localX) || Float.isNaN(localY))
-            return;
-        Vec3 at = entity.toGlobalVector(Vec3.atCenterOf(localPos), 1);
-        double reach = McCompat.blockReach(player) + REACH_SLACK;
-        if (player.getEyePosition().distanceToSqr(at) > reach * reach)
-            return;
-        MovingConsole moving = at(entity, localPos);
-        if (moving == null)
+        MovingConsole moving = reached(player, entityId, localPos);
+        if (moving == null || Float.isNaN(localX) || Float.isNaN(localY))
             return;
         PanelElement element = moving.console.getLayout().elementById(elementId).orElse(null);
         if (element == null || zone < 0 || zone >= element.pickBoxes().length)
             return;
         moving.console.clickElement(elementId, zone,
                 Math.max(0, Math.min(element.width(), localX)), Math.max(0, Math.min(element.depth(), localY)), sneaking);
+    }
+
+    /**
+     * A knob, slider or analog lever set by hand: a drag brings it to
+     * {@code value}; with {@code relative} it is a sneak-scroll's one step up
+     * or down. The part's own limits apply either way.
+     */
+    public static void setValue(Player player, int entityId, BlockPos localPos, UUID elementId, int value, boolean relative) {
+        MovingConsole moving = reached(player, entityId, localPos);
+        if (moving == null
+                || !(moving.console.getLayout().elementById(elementId).orElse(null) instanceof AnalogElement analog))
+            return;
+        if (relative)
+            moving.console.setAnalogValue(elementId, analog.value() + Integer.signum(value));
+        else
+            moving.console.setAnalogValue(elementId, value, player); // they hear each step from their own client
+    }
+
+    /** The running console a player says they worked, if they could have: it exists and is within reach. */
+    @Nullable
+    private static MovingConsole reached(Player player, int entityId, BlockPos localPos) {
+        if (player.isSpectator()
+                || !(player.level().getEntity(entityId) instanceof AbstractContraptionEntity entity)
+                || entity.getContraption() == null)
+            return null;
+        Vec3 at = entity.toGlobalVector(Vec3.atCenterOf(localPos), 1);
+        double reach = McCompat.blockReach(player) + REACH_SLACK;
+        return player.getEyePosition().distanceToSqr(at) > reach * reach ? null : at(entity, localPos);
     }
 
     /** The contraption's own copy of the console's data: what it saves, and what it places on disassembly. */

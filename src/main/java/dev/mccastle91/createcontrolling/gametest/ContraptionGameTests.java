@@ -16,6 +16,7 @@ import dev.mccastle91.createcontrolling.CreateControlling;
 import dev.mccastle91.createcontrolling.compat.create.contraption.MovingConsole;
 import dev.mccastle91.createcontrolling.panel.FrequencyPair;
 import dev.mccastle91.createcontrolling.panel.PanelBlockEntity;
+import dev.mccastle91.createcontrolling.panel.element.KnobElement;
 import dev.mccastle91.createcontrolling.panel.element.LampElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElements;
 import dev.mccastle91.createcontrolling.panel.element.SwitchElement;
@@ -25,6 +26,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -54,6 +56,7 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 public class ContraptionGameTests {
 
     private static final String EMPTY = "empty";
+    private static final String READOUT = "FLOOR 2";
 
     // The cabin: the contact is what the pulley picks up, the console hangs on its south side
     private static final BlockPos CABIN = new BlockPos(3, 1, 3);
@@ -74,6 +77,8 @@ public class ContraptionGameTests {
         LampElement lamp = PanelElements.LAMP.create();
         lamp.setPos(9, 9);
         lamp.setFrequency(freq(Items.BRICK, Items.STRING));
+        KnobElement knob = PanelElements.KNOB.create();
+        knob.setPos(9, 2);
 
         helper.setBlock(CABIN, AllBlocks.REDSTONE_CONTACT.getDefaultState()
                 .setValue(RedstoneContactBlock.FACING, Direction.NORTH));
@@ -89,7 +94,11 @@ public class ContraptionGameTests {
         PanelBlockEntity placed = console(helper);
         placed.getLayout().addElement(toggle);
         placed.getLayout().addElement(lamp);
+        placed.getLayout().addElement(knob);
         placed.markLayoutChanged();
+        // as a Display Link leaves it: no link reaches the console once it rides
+        placed.setDisplayLine(1, Component.literal(READOUT));
+        placed.syncDisplayLines();
         for (BlockPos link : new BlockPos[] { RECEIVER, TRANSMITTER }) {
             helper.setBlock(link.below(), Blocks.STONE.defaultBlockState());
             // placed as a transmitter, like a player's: see PanelLinkGameTests#placeCreateLink
@@ -139,6 +148,19 @@ public class ContraptionGameTests {
                     Vec3 beside = Vec3.atCenterOf(helper.absolutePos(CONSOLE.south()));
                     player.setPos(beside.x, beside.y - 0.5, beside.z);
                     MovingConsole.click(player, entity.getId(), local, toggle.id(), 0, 1f, 1f, false);
+                    // a drag sets a knob outright, a sneak-scroll steps it
+                    MovingConsole.setValue(player, entity.getId(), local, knob.id(), 7, false);
+                    MovingConsole.setValue(player, entity.getId(), local, knob.id(), 1, true);
+                    PanelBlockEntity riding = MovingConsole.at(entity, local).console();
+                    if (!(riding.getLayout().elementById(knob.id()).orElseThrow() instanceof KnobElement turned)
+                            || turned.value() != 8)
+                        throw new GameTestAssertException("The knob on the elevator should stand at 8 after a drag to 7 and a step up");
+                    if (!READOUT.equals(riding.displayLine(1).getString()))
+                        throw new GameTestAssertException("The readout lost its text on the elevator: '"
+                                + riding.displayLine(1).getString() + "'");
+                    // ...and it is in what clients are sent
+                    if (!MovingConsole.at(entity, local).syncPayload(entity).tag().contains(PanelBlockEntity.TAG_DISPLAY_LINES))
+                        throw new GameTestAssertException("The readout's text is missing from the state sent to clients");
                 })
                 .thenWaitUntil(() -> assertLinkPowered(helper, true))
                 .thenExecute(() -> {
@@ -160,6 +182,11 @@ public class ContraptionGameTests {
                     if (!(console(helper).getLayout().elementById(toggle.id()).orElseThrow() instanceof SwitchElement back)
                             || !back.isOn())
                         throw new GameTestAssertException("The switch should come back from the elevator switched on");
+                    if (!(console(helper).getLayout().elementById(knob.id()).orElseThrow() instanceof KnobElement back2)
+                            || back2.value() != 8)
+                        throw new GameTestAssertException("The knob should come back from the elevator at 8");
+                    if (!READOUT.equals(console(helper).displayLine(1).getString()))
+                        throw new GameTestAssertException("The readout should come back from the elevator with its text");
                     assertLinkPowered(helper, true);
                 })
                 // ...and it is the only one sending: nothing of the elevator's console is left on the network

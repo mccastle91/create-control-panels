@@ -47,6 +47,11 @@ public final class CCNetwork {
                     if (context.player() instanceof ServerPlayer player)
                         payload.handle(player);
                 }));
+        event.registrar(VERSION).playToServer(ContraptionValuePayload.TYPE, ContraptionValuePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player)
+                        payload.handle(player);
+                }));
         event.registrar(VERSION).playToClient(ContraptionSyncPayload.TYPE, ContraptionSyncPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(payload::handleClient));
     }
@@ -56,6 +61,10 @@ public final class CCNetwork {
     }
 
     public static void sendToServer(ContraptionClickPayload payload) {
+        PacketDistributor.sendToServer(payload);
+    }
+
+    public static void sendToServer(ContraptionValuePayload payload) {
         PacketDistributor.sendToServer(payload);
     }
 
@@ -108,6 +117,15 @@ public final class CCNetwork {
                 .decoder(ContraptionSyncPayload::read)
                 .consumerMainThread((payload, context) -> payload.handleClient())
                 .add();
+        CHANNEL.messageBuilder(ContraptionValuePayload.class, 4, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ContraptionValuePayload::write)
+                .decoder(ContraptionValuePayload::read)
+                .consumerMainThread((payload, context) -> {
+                    ServerPlayer player = context.get().getSender();
+                    if (player != null)
+                        payload.handle(player);
+                })
+                .add();
     }
 
     public static void sendEditToServer(BlockPos pos, CompoundTag op) {
@@ -115,6 +133,10 @@ public final class CCNetwork {
     }
 
     public static void sendToServer(ContraptionClickPayload payload) {
+        CHANNEL.sendToServer(payload);
+    }
+
+    public static void sendToServer(ContraptionValuePayload payload) {
         CHANNEL.sendToServer(payload);
     }
 

@@ -69,12 +69,14 @@ public final class CreateControllingClient {
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onMouseScroll);
         NeoForge.EVENT_BUS.addListener(AnalogDrag::onUseKey);
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onHighlight);
+        NeoForge.EVENT_BUS.addListener(ContraptionConsoles::onRenderStage);
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onPlaySound);
         //?} else {
         /*MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onPlaySound);
         MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onMouseScroll);
         MinecraftForge.EVENT_BUS.addListener(AnalogDrag::onUseKey);
         MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onHighlight);
+        MinecraftForge.EVENT_BUS.addListener(ContraptionConsoles::onRenderStage);
         *///?}
         PonderIndex.addPlugin(new CCPonderPlugin());
     }
@@ -161,15 +163,20 @@ public final class CreateControllingClient {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.screen != null || !mc.player.isShiftKeyDown() || AnalogDrag.holdsCableTool(mc.player))
             return;
-        AnalogDrag.Aim aim = AnalogDrag.aimedAnalog(mc);
-        if (aim == null)
-            return;
         //? if neoforge {
         int delta = (int) Math.signum(event.getScrollDeltaY());
         //?} else {
         /*int delta = (int) Math.signum(event.getScrollDelta());
         *///?}
         if (delta == 0)
+            return;
+        // a console on a contraption is in front of whatever block of the world is behind it
+        if (ContraptionConsoles.scroll(delta)) {
+            event.setCanceled(true);
+            return;
+        }
+        AnalogDrag.Aim aim = AnalogDrag.aimedAnalog(mc);
+        if (aim == null)
             return;
         CompoundTag op = new CompoundTag();
         op.putString(PanelEditOps.KEY_OP, PanelEditOps.OP_ADJUST);
