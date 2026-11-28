@@ -8,6 +8,7 @@ import dev.mccastle91.createcontrolling.network.ContraptionSyncPayload;
 import dev.mccastle91.createcontrolling.panel.ConsoleHost;
 import dev.mccastle91.createcontrolling.panel.PanelBlock;
 import dev.mccastle91.createcontrolling.panel.PanelBlockEntity;
+import dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement;
 import dev.mccastle91.createcontrolling.panel.element.AnalogElement;
 import dev.mccastle91.createcontrolling.panel.element.FloorButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
@@ -158,6 +159,11 @@ public final class MovingConsole implements ConsoleHost {
         PanelElement element = moving.console.getLayout().elementById(elementId).orElse(null);
         if (element == null || zone < 0 || zone >= element.pickBoxes().length)
             return;
+        // on an elevator an actor switch with no filter picks floors: its press calls one and switches nothing
+        if (element instanceof ActorSwitchElement selector && RidingParts.selectsFloors(moving.context, selector)) {
+            moving.parts.pressFloor(moving.context, moving.console, selector);
+            return;
+        }
         boolean worked = moving.console.clickElement(elementId, zone,
                 Math.max(0, Math.min(element.width(), localX)), Math.max(0, Math.min(element.depth(), localY)), sneaking);
         if (worked && element instanceof FloorButtonElement button)
@@ -171,8 +177,14 @@ public final class MovingConsole implements ConsoleHost {
      */
     public static void setValue(Player player, int entityId, BlockPos localPos, UUID elementId, int value, boolean relative) {
         MovingConsole moving = reached(player, entityId, localPos);
-        if (moving == null
-                || !(moving.console.getLayout().elementById(elementId).orElse(null) instanceof AnalogElement analog))
+        if (moving == null)
+            return;
+        PanelElement element = moving.console.getLayout().elementById(elementId).orElse(null);
+        if (relative && element instanceof ActorSwitchElement selector && RidingParts.selectsFloors(moving.context, selector)) {
+            moving.parts.scrollFloor(moving.context, moving.console, selector, value);
+            return;
+        }
+        if (!(element instanceof AnalogElement analog))
             return;
         if (relative)
             moving.console.setAnalogValue(elementId, analog.value() + Integer.signum(value));

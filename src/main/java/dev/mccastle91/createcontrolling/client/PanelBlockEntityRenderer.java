@@ -138,7 +138,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
             else if (element instanceof DisplayBoardElement board)
                 displayBoard(p, font, panel, board);
             else if (element instanceof ActorSwitchElement actors)
-                actorSwitch(p, actors, w, d, h);
+                actorSwitch(p, font, actors, w, d, h);
             else if (element instanceof FloorButtonElement floor)
                 floorButton(p, font, floor, w, d, h, color(floor));
             else if (element instanceof FloorReadoutElement readout)
@@ -314,26 +314,48 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
      * the dark plate, the square button standing out of its middle with the
      * filter's item on it, and the arrows either side, dark while the actors
      * run and lit red while they are stopped, as on Create's block.
+     *
+     * As an elevator's floor selector it shows the picked floor's name on
+     * the button, the way Create does: white while that floor is where the
+     * cabin is called to, orange while it is not, over a dark copy set off
+     * behind. The arrows rest dark and sweep while the cabin travels.
      */
-    private void actorSwitch(ComponentPainter p, ActorSwitchElement part, float w, float d, float h) {
+    private void actorSwitch(ComponentPainter p, Font font, ActorSwitchElement part, float w, float d, float h) {
         TextureAtlasSprite plate = ComponentPainter.sprite(ComponentPainter.CONTROLS_PLATE);
         TextureAtlasSprite arrows = ComponentPainter.sprite(ComponentPainter.CONTROLS_ARROWS);
         int white = 0xFFFFFFFF;
         float base = 0.5f;
         p.box(0, 0, 0, w, d, base, iron, white, light);
         p.textured(0, 0, w, d, base + LIFT, plate, 1, 9.5f, 7, 13.5f, white, light);
-        // Create's sheet holds eight frames of the arrows' sweep; the two it rests on are the first of each column
-        boolean stopped = !part.running();
-        float u = stopped ? 9 : 1;
-        int glow = stopped ? ComponentPainter.FULL_BRIGHT : light;
-        p.textured(0, 0.5f, 1.5f, d - 0.5f, base + 2 * LIFT, arrows, u, 0.5f, u + 1.5f, 3.5f, white, glow);
-        p.textured(w - 1.5f, 0.5f, w, d - 0.5f, base + 2 * LIFT, arrows, u + 4.5f, 0.5f, u + 6, 3.5f, white, glow);
+        // Create's sheet holds eight frames of the arrows' sweep, four to a column; the two it rests on
+        // are the first of each column. A selector runs through them while the cabin travels.
+        boolean selector = !part.floorName().isEmpty();
+        int frame = selector ? 0 : part.running() ? 0 : 4;
+        if (selector && part.cabinTravel() != 0 && Minecraft.getInstance().level != null) {
+            int step = (int) (Minecraft.getInstance().level.getGameTime() / 2 % 8);
+            frame = part.cabinTravel() > 0 ? step : 7 - step;
+        }
+        float u = frame < 4 ? 1 : 9, v = 0.5f + (frame % 4) * 4;
+        int glow = frame == 0 ? light : ComponentPainter.FULL_BRIGHT;
+        p.textured(0, 0.5f, 1.5f, d - 0.5f, base + 2 * LIFT, arrows, u, v, u + 1.5f, v + 3, white, glow);
+        p.textured(w - 1.5f, 0.5f, w, d - 0.5f, base + 2 * LIFT, arrows, u + 4.5f, v, u + 6, v + 3, white, glow);
         float half = 1.525f, cx = w / 2, cy = d / 2;
         float top = part.isPressed() ? base + (h - base) * 0.4f : h;
         p.box(cx - half, cy - half, base, cx + half, cy + half, top, iron, white, light);
         p.textured(cx - half, cy - half, cx + half, cy + half, top + LIFT, plate, 2.5f, 10, 5.5f, 13, white, light);
-        if (!part.filter().isEmpty())
+        if (selector) {
+            String name = part.floorName();
+            float room = 2 * half - 0.5f;
+            float lineHeight = Math.min(1.7f, room * font.lineHeight / Math.max(1, font.width(name)));
+            float x = part.x() + cx - font.width(name) * lineHeight / font.lineHeight / 2;
+            float y = part.y() + cy - lineHeight * ComponentPainter.GLYPH_HEIGHT / 2;
+            int ink = (part.floorIsTarget() ? StyleColor.FLOOR_NUMBER_LIGHT : StyleColor.FLOOR_PICKED).argb();
+            float off = 0.6f * lineHeight / font.lineHeight;
+            p.faceText(font, name, x + off, y + off, top + 2 * LIFT, lineHeight, scale(ink, 0.25f), light);
+            p.faceText(font, name, x, y, top + 3 * LIFT, lineHeight, ink, ComponentPainter.FULL_BRIGHT);
+        } else if (!part.filter().isEmpty()) {
             p.item(part.filter(), cx, cy, top + 2 * LIFT, 1.9f, light);
+        }
     }
 
     /**

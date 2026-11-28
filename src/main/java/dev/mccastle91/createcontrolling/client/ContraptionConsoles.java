@@ -256,12 +256,22 @@ public final class ContraptionConsoles {
         return true;
     }
 
-    /** A sneak-scroll: nudges the aimed knob, slider or analog lever. True if the scroll was for a console part. */
-    static boolean scroll(int delta) {
+    /**
+     * A scroll over a part: steps the aimed floor selector to the next floor
+     * (as on Create's Contraption Controls, no sneaking needed), or, sneaking,
+     * nudges the aimed knob, slider or analog lever. True if the scroll was
+     * for a console part.
+     */
+    static boolean scroll(int delta, boolean sneaking) {
         Aim aim = aim();
-        if (aim == null || !(aim.pick().element() instanceof AnalogElement analog))
+        if (aim == null)
             return false;
-        CCNetwork.sendToServer(new ContraptionValuePayload(aim.entity().getId(), aim.localPos(), analog.id(), delta, true));
+        PanelElement element = aim.pick().element();
+        boolean selector = element instanceof dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement actors
+                && !actors.floorName().isEmpty();
+        if (!selector && !(sneaking && element instanceof AnalogElement))
+            return false;
+        CCNetwork.sendToServer(new ContraptionValuePayload(aim.entity().getId(), aim.localPos(), element.id(), delta, true));
         return true;
     }
 

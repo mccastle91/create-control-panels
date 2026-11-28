@@ -24,6 +24,12 @@ import java.util.Map;
  * redstone power holds a placed Contraption Controls block off; that lets a
  * Redstone Link on the ground stop a contraption's actors.
  *
+ * <p>On an elevator, with no filter, it is what Create's block is there: a
+ * floor selector. The button shows a floor's name, scrolling over it picks
+ * another, and a press sends the cabin to it; the name is white while it is
+ * the floor the cabin is called to and orange while it is not. It switches no
+ * actors then. With a filter it switches that kind of actor on an elevator too.
+ *
  * <p>The part only holds this state. What carries the console applies it (see
  * compat/create/contraption); on a placed console it waits for the next assembly.
  */
@@ -42,14 +48,21 @@ public class ActorSwitchElement extends ReceiverElement {
 
     /** How long the button stays down after a press. */
     private static final int PRESS_TICKS = 6;
-    /** Rides above the four bits of the received strength in what clients are sent. */
+    /** These ride above the four bits of the received strength in what clients are sent. */
     private static final int PRESSED = 16;
+    private static final int FLOOR_IS_TARGET = 32;
+    private static final int CABIN_RISING = 64;
+    private static final int CABIN_SINKING = 128;
 
     private boolean on = true;
     private ItemStack filter = ItemStack.EMPTY;
     private boolean heldWhenSaved;
     /** Runtime only; never saved. */
     private int pressTicks;
+    /** As a floor selector: the picked floor's name (empty when it is not one), and how it stands to the cabin. */
+    private String floorName = "";
+    private boolean floorIsTarget;
+    private int cabinTravel;
 
     public ActorSwitchElement(PanelElementType<? extends ActorSwitchElement> type) {
         super(type);
@@ -67,6 +80,52 @@ public class ActorSwitchElement extends ReceiverElement {
             sound(PartSound.button(true, false));
         pressTicks = PRESS_TICKS;
         return true;
+    }
+
+    /** The button goes down without switching anything: a floor selector's press. */
+    public void press() {
+        if (pressTicks == 0)
+            sound(PartSound.button(true, false));
+        pressTicks = PRESS_TICKS;
+    }
+
+    /** The click of scrolling to another floor, higher for a higher one. */
+    public void noteScroll(int floor) {
+        sound(PartSound.detent(Math.min(15, floor)));
+    }
+
+    /**
+     * Shows a floor as a selector does, or with an empty name stops being one.
+     * {@code isTarget}: the floor is the one the cabin is called to.
+     * {@code travel}: 1 while the cabin rises, -1 while it sinks, 0 at rest.
+     * True if anything changed (the caller syncs).
+     */
+    public boolean showFloor(String name, boolean isTarget, int travel) {
+        String shown = name == null ? "" : name.trim();
+        if (shown.isEmpty()) {
+            isTarget = false;
+            travel = 0;
+        }
+        if (shown.equals(floorName) && isTarget == floorIsTarget && travel == cabinTravel)
+            return false;
+        floorName = shown;
+        floorIsTarget = isTarget;
+        cabinTravel = travel;
+        return true;
+    }
+
+    /** The floor a selector has picked; empty when the part is switching actors. */
+    public String floorName() {
+        return floorName;
+    }
+
+    public boolean floorIsTarget() {
+        return floorIsTarget;
+    }
+
+    /** 1 while the elevator's cabin rises, -1 while it sinks, 0 at rest. */
+    public int cabinTravel() {
+        return cabinTravel;
     }
 
     @Override
@@ -132,13 +191,26 @@ public class ActorSwitchElement extends ReceiverElement {
 
     @Override
     public int displayStrength() {
-        return receivedStrength() | (pressTicks > 0 ? PRESSED : 0);
+        return receivedStrength() | (pressTicks > 0 ? PRESSED : 0) | (floorIsTarget ? FLOOR_IS_TARGET : 0)
+                | (cabinTravel > 0 ? CABIN_RISING : cabinTravel < 0 ? CABIN_SINKING : 0);
     }
 
     @Override
     public void applyDisplayStrength(int strength) {
         super.applyDisplayStrength(strength & 15);
         pressTicks = (strength & PRESSED) != 0 ? 1 : 0;
+        floorIsTarget = (strength & FLOOR_IS_TARGET) != 0;
+        cabinTravel = (strength & CABIN_RISING) != 0 ? 1 : (strength & CABIN_SINKING) != 0 ? -1 : 0;
+    }
+
+    @Override
+    public String displayText() {
+        return floorName;
+    }
+
+    @Override
+    public void applyDisplayText(String text) {
+        floorName = text == null ? "" : text;
     }
 
     @Override

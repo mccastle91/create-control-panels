@@ -50,6 +50,10 @@ final class RidingParts {
 
     /** What each actor switch asked for at the last tick: a change since then is the switch's own doing. */
     private final Map<UUID, Boolean> asked = new HashMap<>();
+    /** The floor each floor selector has picked, counted from 0 at the lowest. */
+    private final Map<UUID, Integer> picked = new HashMap<>();
+    /** The floor the cabin was called to at the last tick; a new call brings every selector to it, as on Create's block. */
+    private int lastTarget = -1;
 
     void tick(MovementContext context, PanelBlockEntity console) {
         AbstractContraptionEntity entity = context.contraption.entity;
@@ -57,13 +61,25 @@ final class RidingParts {
             return;
         boolean floors = false;
         for (PanelElement element : console.getLayout().elements()) {
-            if (element instanceof ActorSwitchElement actors)
+            if (element instanceof ActorSwitchElement actors && !selectsFloors(context, actors)) {
                 reconcile(entity, console, actors);
-            else if (element instanceof FloorButtonElement || element instanceof FloorReadoutElement)
+                if (actors.showFloor("", false, 0))
+                    console.syncRuntime();
+            } else if (element instanceof ActorSwitchElement || element instanceof FloorButtonElement
+                    || element instanceof FloorReadoutElement) {
                 floors = true;
+            }
         }
         if (floors)
             showFloors(context, entity, console);
+    }
+
+    /**
+     * Whether an actor switch is a floor selector here: on an elevator with no
+     * filter, where Create's own block picks floors and switches nothing.
+     */
+    static boolean selectsFloors(MovementContext context, ActorSwitchElement part) {
+        return part.filter().isEmpty() && context.contraption instanceof ElevatorContraption;
     }
 
     // --- Actors ------------------------------------------------------------------
@@ -79,8 +95,8 @@ final class RidingParts {
             return;
         PanelLayout layout = PanelLayout.load(data.getCompound(PanelBlockEntity.TAG_LAYOUT), context.world.registryAccess());
         for (PanelElement element : layout.elements()) {
-            if (element instanceof ActorSwitchElement actors && actors.stoppedWhenSaved()
-                    && !context.contraption.isActorTypeDisabled(actors.filter()))
+            if (element instanceof ActorSwitchElement actors && !selectsFloors(context, actors)
+                    && actors.stoppedWhenSaved() && !context.contraption.isActorTypeDisabled(actors.filter()))
                 context.contraption.getDisabledActors().add(actors.filter().copy());
         }
     }
@@ -178,12 +194,17 @@ final class RidingParts {
 
     // --- Elevator floors -----------------------------------------------------------
 
-    /** Lights the button of the floor the cabin is called to, and names the floor it is nearest to. */
+    /**
+     * Lights the button of the floor the cabin is called to, names the floor
+     * it is nearest to, and has each floor selector show the floor it has picked.
+     */
     private void showFloors(MovementContext context, AbstractContraptionEntity entity, PanelBlockEntity console) {
         int target = -1;
+        int travel = 0;
         String here = "";
+        List<IntAttached<Couple<String>>> floors = List.of();
         if (context.contraption instanceof ElevatorContraption elevator) {
-            List<IntAttached<Couple<String>>> floors = elevator.namesList;
+            floors = elevator.namesList;
             Integer targetY = elevator.getCurrentTargetY(context.world);
             // the height of the cabin's own contact, which is level with a floor's contact when it stops there
             int cabinY = (int) Math.round(entity.getY()) + elevator.getContactYOffset();
@@ -197,16 +218,54 @@ final class RidingParts {
                     here = floors.get(i).getSecond().getFirst();
                 }
             }
+            if (targetY != null && targetY != cabinY)
+                travel = targetY > cabinY ? 1 : -1;
         }
+        // a new call brings every selector to the called floor
+        boolean called = target >= 0 && target != lastTarget;
+        lastTarget = target;
         boolean changed = false;
         for (PanelElement element : console.getLayout().elements()) {
-            if (element instanceof FloorButtonElement button)
+            if (element instanceof FloorButtonElement button) {
                 changed |= button.setLit(button.floor() - 1 == target);
-            else if (element instanceof FloorReadoutElement readout)
+            } else if (element instanceof FloorReadoutElement readout) {
                 changed |= readout.setText(here);
+            } else if (element instanceof ActorSwitchElement selector && selectsFloors(context, selector)) {
+                if (floors.isEmpty()) {
+                    // Create's block shows the same in a shaft with no floors yet
+                    changed |= selector.showFloor("X", true, 0);
+                    continue;
+                }
+                Integer was = picked.get(selector.id());
+                int floor = Math.max(0, Math.min(floors.size() - 1, was == null || called ? Math.max(target, 0) : was));
+                picked.put(selector.id(), floor);
+                changed |= selector.showFloor(floors.get(floor).getSecond().getFirst(), floor == target, travel);
+            }
         }
         if (changed)
             console.syncRuntime();
+    }
+
+    /** A scroll over a floor selector: picks the next floor up or down. */
+    void scrollFloor(MovementContext context, PanelBlockEntity console, ActorSwitchElement selector, int step) {
+        if (!(context.contraption instanceof ElevatorContraption elevator) || elevator.namesList.isEmpty())
+            return;
+        int was = picked.getOrDefault(selector.id(), Math.max(lastTarget, 0));
+        int floor = Math.max(0, Math.min(elevator.namesList.size() - 1, was + Integer.signum(step)));
+        if (floor == was)
+            return;
+        picked.put(selector.id(), floor);
+        selector.noteScroll(floor);
+        console.elementChanged(selector);
+    }
+
+    /** A press on a floor selector: the cabin is sent to the floor it has picked, unless it is called there already. */
+    void pressFloor(MovementContext context, PanelBlockEntity console, ActorSwitchElement selector) {
+        selector.press();
+        console.elementChanged(selector);
+        Integer floor = picked.get(selector.id());
+        if (floor != null && floor != lastTarget)
+            callFloor(context, floor + 1);
     }
 
     /**

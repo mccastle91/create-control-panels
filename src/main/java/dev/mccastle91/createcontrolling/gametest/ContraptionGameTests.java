@@ -262,9 +262,13 @@ public class ContraptionGameTests {
      * An elevator panel: with two floors in the shaft, the readout names the
      * floor the cabin stands at and that floor's button glows; a press on the
      * other floor's button sends the cabin there, as picking it on a
-     * Contraption Controls block would.
+     * Contraption Controls block would. An actor switch with no actor is a
+     * floor selector on the same panel: it shows the called floor, a scroll
+     * picks the other one (not yet the cabin's target), a press sends the
+     * cabin there, and it follows a call made with a button. Switched off, it
+     * still stops no actors on an elevator.
      */
-    @GameTest(template = EMPTY, timeoutTicks = 600)
+    @GameTest(template = EMPTY, timeoutTicks = 900)
     public void floorButtonCallsTheCabin(GameTestHelper helper) {
         FloorButtonElement ground = PanelElements.FLOOR_BUTTON.create();
         ground.setPos(2, 2);
@@ -274,7 +278,10 @@ public class ContraptionGameTests {
         upper.setFloor(2);
         FloorReadoutElement readout = PanelElements.FLOOR_READOUT.create();
         readout.setPos(2, 8);
-        build(helper, ground, upper, readout);
+        ActorSwitchElement selector = PanelElements.ACTOR_SWITCH.create();
+        selector.setPos(9, 2);
+        selector.setOn(false);
+        build(helper, ground, upper, readout, selector);
         helper.setBlock(FLOOR_CONTACT.above(), AllBlocks.ELEVATOR_CONTACT.getDefaultState()
                 .setValue(ElevatorContactBlock.FACING, Direction.SOUTH));
         BlockPos local = CONSOLE.subtract(CABIN);
@@ -300,10 +307,22 @@ public class ContraptionGameTests {
                                 + riding(helper, local, readout).displayText() + "'");
                     if (!riding(helper, local, ground).isLit() || riding(helper, local, upper).isLit())
                         throw new GameTestAssertException("Only the lower floor's button should glow at the start");
+                    assertSelector(helper, local, selector, name, true);
+                    if (cabin.isActorTypeDisabled(ItemStack.EMPTY))
+                        throw new GameTestAssertException("A floor selector stops no actors, even switched off");
                     startY[0] = entity.getY();
                 })
-                .thenExecute(() -> MovingConsole.click(playerBeside(helper), elevator(helper).getId(), local,
-                        upper.id(), 0, 1f, 1f, false))
+                // a scroll picks the upper floor without sending the cabin anywhere
+                .thenExecute(() -> MovingConsole.setValue(playerBeside(helper), elevator(helper).getId(), local,
+                        selector.id(), 1, true))
+                .thenWaitUntil(() -> assertSelector(helper, local, selector,
+                        floorName((ElevatorContraption) elevator(helper).getContraption(), 1), false))
+                .thenExecuteAfter(5, () -> {
+                    if (Math.abs(elevator(helper).getY() - startY[0]) > 0.01)
+                        throw new GameTestAssertException("Picking a floor should not move the cabin");
+                    // the press does
+                    MovingConsole.click(playerBeside(helper), elevator(helper).getId(), local, selector.id(), 0, 1f, 1f, false);
+                })
                 .thenWaitUntil(() -> {
                     AbstractContraptionEntity entity = elevator(helper);
                     if (entity.getY() < startY[0] + 0.99)
@@ -314,6 +333,18 @@ public class ContraptionGameTests {
                                 + riding(helper, local, readout).displayText() + "'");
                     if (riding(helper, local, ground).isLit() || !riding(helper, local, upper).isLit())
                         throw new GameTestAssertException("Only the upper floor's button should glow now");
+                    assertSelector(helper, local, selector, name, true);
+                })
+                // back down with the lower floor's button; the selector follows the call
+                .thenExecute(() -> MovingConsole.click(playerBeside(helper), elevator(helper).getId(), local,
+                        ground.id(), 0, 1f, 1f, false))
+                .thenWaitUntil(() -> {
+                    AbstractContraptionEntity entity = elevator(helper);
+                    if (entity.getY() > startY[0] + 0.01)
+                        throw new GameTestAssertException("The cabin has not come back down: " + entity.getY());
+                    if (!riding(helper, local, ground).isLit() || riding(helper, local, upper).isLit())
+                        throw new GameTestAssertException("Only the lower floor's button should glow again");
+                    assertSelector(helper, local, selector, floorName((ElevatorContraption) entity.getContraption(), 0), true);
                 })
                 .thenSucceed();
     }
@@ -380,6 +411,16 @@ public class ContraptionGameTests {
 
     private static ItemStack filterOf(PanelBlockEntity console, ActorSwitchElement part) {
         return ((ActorSwitchElement) console.getLayout().elementById(part.id()).orElseThrow()).filter();
+    }
+
+    /** What a floor selector shows: the floor's name, and whether that floor is the one the cabin is called to. */
+    private static void assertSelector(GameTestHelper helper, BlockPos local, ActorSwitchElement selector,
+                                       String name, boolean isTarget) {
+        ActorSwitchElement part = riding(helper, local, selector);
+        if (!name.equals(part.floorName()) || part.floorIsTarget() != isTarget)
+            throw new GameTestAssertException("The floor selector should show '" + name + "' as "
+                    + (isTarget ? "the called floor" : "another floor") + "; it shows '" + part.floorName()
+                    + "', called=" + part.floorIsTarget());
     }
 
     private static String floorName(ElevatorContraption cabin, int index) {

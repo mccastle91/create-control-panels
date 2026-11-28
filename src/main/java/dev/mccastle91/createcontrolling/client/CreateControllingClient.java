@@ -158,10 +158,13 @@ public final class CreateControllingClient {
             event.setCanceled(true);
     }
 
-    /** Sneak + scroll while aiming at a knob or slider nudges it, analog-lever style. */
+    /**
+     * Sneak + scroll while aiming at a knob or slider nudges it, analog-lever
+     * style; a plain scroll over a floor selector on an elevator picks a floor.
+     */
     private static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.screen != null || !mc.player.isShiftKeyDown() || AnalogDrag.holdsCableTool(mc.player))
+        if (mc.player == null || mc.screen != null)
             return;
         //? if neoforge {
         int delta = (int) Math.signum(event.getScrollDeltaY());
@@ -171,10 +174,12 @@ public final class CreateControllingClient {
         if (delta == 0)
             return;
         // a console on a contraption is in front of whatever block of the world is behind it
-        if (ContraptionConsoles.scroll(delta)) {
+        if (ContraptionConsoles.scroll(delta, mc.player.isShiftKeyDown())) {
             event.setCanceled(true);
             return;
         }
+        if (!mc.player.isShiftKeyDown() || AnalogDrag.holdsCableTool(mc.player))
+            return;
         AnalogDrag.Aim aim = AnalogDrag.aimedAnalog(mc);
         if (aim == null)
             return;
