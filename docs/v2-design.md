@@ -49,7 +49,7 @@ Wrench: sneak-use cycles the angle presets; on a wall it runs 15/30/45° with th
 | nixie | 6×4 | in, two nixie digits 0–15 | — |
 | nixie_strip | 5.5–13 × 4 (2–5 tubes, default 4) | Display Link, one line | — |
 | display_board | 12–14 × 6 (default 12, centred) | Display Link, two rows, each its own line or off | — |
-| actor_switch | 3×4 | in: a signal holds the actors stopped | click throws the lever: on lets the actors of the contraption it rides run (one kind by filter, or all). Only holds its state on a placed console |
+| actor_switch | 6×4 (Create's top plate at half size) | in: a signal holds the actors stopped | click presses the button: on lets the actors of the contraption it rides run (one kind by the filter item in its third slot, or all); the arrows light red while they are stopped. Only holds its state on a placed console |
 | floor_button | 3×3 | — | click calls an elevator floor (1 = lowest); glows while that floor is the cabin's target |
 | floor_readout | 8.5×4 | — | — (three tubes: the short name of the floor the cabin is at) |
 | label | text-sized | — | — (passes clicks through) |

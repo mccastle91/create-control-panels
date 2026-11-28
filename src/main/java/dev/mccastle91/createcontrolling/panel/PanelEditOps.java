@@ -105,6 +105,13 @@ public final class PanelEditOps {
                 ItemStack stack = op.contains("Item")
                         ? McCompat.loadStack(op.getCompound("Item"), registries)
                         : ItemStack.EMPTY;
+                // an actor switch's third slot is its filter: one of the kinds Create's own controls can name
+                if (op.getInt("Slot") == dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement.FILTER_SLOT) {
+                    if (element instanceof dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement actors
+                            && dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement.acceptsFilter(stack))
+                        actors.setFilter(stack);
+                    return;
+                }
                 FrequencyPair current = element.frequency();
                 element.setFrequency(op.getInt("Slot") == 0
                         ? FrequencyPair.of(stack, current.second())

@@ -24,9 +24,11 @@ public class FloorButtonElement extends PanelElement implements ColorableElement
 
     public static final String TAG_FLOOR = "Floor";
     public static final String TAG_COLOR = "Color";
+    public static final String TAG_DARK_NUMBER = "DarkNumber";
     public static final String OPTION_FLOOR = "floor";
+    public static final String OPTION_LIGHT_NUMBER = "light_number";
     public static final int MAX_FLOOR = 64;
-    public static final DyeColor DEFAULT_COLOR = DyeColor.WHITE;
+    public static final DyeColor DEFAULT_COLOR = DyeColor.GRAY;
     /** How long the cap stays down after a press. */
     private static final int PRESS_TICKS = 6;
 
@@ -35,6 +37,8 @@ public class FloorButtonElement extends PanelElement implements ColorableElement
 
     private int floor = 1;
     private DyeColor color = DEFAULT_COLOR;
+    /** The number glows light, as on Create's Contraption Controls, or is printed dark (for a pale cap). */
+    private boolean lightNumber = true;
 
     /** Runtime only; never saved. */
     private int pressTicks;
@@ -87,6 +91,14 @@ public class FloorButtonElement extends PanelElement implements ColorableElement
         this.floor = Mth.clamp(floor, 1, MAX_FLOOR);
     }
 
+    public boolean lightNumber() {
+        return lightNumber;
+    }
+
+    public void setLightNumber(boolean lightNumber) {
+        this.lightNumber = lightNumber;
+    }
+
     public boolean isPressed() {
         return pressTicks > 0;
     }
@@ -126,15 +138,22 @@ public class FloorButtonElement extends PanelElement implements ColorableElement
 
     @Override
     public List<PartOption> options() {
-        return List.of(PartOption.stepper(OPTION_FLOOR,
-                Component.translatable("gui.create_controlling.floor", floor), floor, 1, MAX_FLOOR, 1));
+        return List.of(
+                PartOption.stepper(OPTION_FLOOR,
+                        Component.translatable("gui.create_controlling.floor", floor), floor, 1, MAX_FLOOR, 1),
+                PartOption.toggle(OPTION_LIGHT_NUMBER, Component.translatable(lightNumber
+                        ? "gui.create_controlling.floor_number.light" : "gui.create_controlling.floor_number.dark"),
+                        lightNumber));
     }
 
     @Override
     public boolean setOption(String key, int value) {
-        if (!OPTION_FLOOR.equals(key))
+        if (OPTION_FLOOR.equals(key))
+            setFloor(value);
+        else if (OPTION_LIGHT_NUMBER.equals(key))
+            lightNumber = value != 0;
+        else
             return false;
-        setFloor(value);
         return true;
     }
 
@@ -147,11 +166,14 @@ public class FloorButtonElement extends PanelElement implements ColorableElement
     protected void saveOptions(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putInt(TAG_FLOOR, floor);
         tag.putString(TAG_COLOR, color.getName());
+        if (!lightNumber)
+            tag.putBoolean(TAG_DARK_NUMBER, true);
     }
 
     @Override
     protected void loadOptions(CompoundTag tag, HolderLookup.Provider registries) {
         setFloor(tag.contains(TAG_FLOOR) ? tag.getInt(TAG_FLOOR) : 1);
         setColor(DyeColor.byName(tag.getString(TAG_COLOR), DEFAULT_COLOR));
+        lightNumber = !tag.getBoolean(TAG_DARK_NUMBER);
     }
 }

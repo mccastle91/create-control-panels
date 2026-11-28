@@ -22,7 +22,8 @@ class FrequencyGhostHandler implements IGhostIngredientHandler<PanelDesignerScre
         Optional<ItemStack> item = ingredient.getItemStack();
         if (item.isEmpty())
             return targets;
-        for (int slot = 0; slot < 2; slot++) {
+        // the two frequency slots, and an actor switch's filter slot
+        for (int slot = 0; slot < 3; slot++) {
             Rect2i area = screen.frequencyDropArea(slot);
             if (area != null)
                 targets.add(new SlotTarget<>(screen, slot, area, item.get()));

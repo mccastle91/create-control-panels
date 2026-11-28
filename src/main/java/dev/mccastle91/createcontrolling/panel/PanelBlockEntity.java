@@ -533,6 +533,8 @@ public class PanelBlockEntity extends BlockEntity {
 
     /** The strength (0-15) a component sends, or the one it reads off its frequency. */
     public static int signalOf(PanelElement element) {
+        if (element instanceof dev.mccastle91.createcontrolling.panel.element.ReceiverElement receiver)
+            return receiver.receivedStrength();
         return element.isTransmitter() ? element.transmittedStrength() : element.displayStrength();
     }
 

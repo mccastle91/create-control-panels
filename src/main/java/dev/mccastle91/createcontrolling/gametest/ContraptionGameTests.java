@@ -14,7 +14,10 @@ import com.simibubi.create.content.redstone.link.RedstoneLinkBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import dev.mccastle91.createcontrolling.CreateControlling;
 import dev.mccastle91.createcontrolling.compat.create.contraption.MovingConsole;
+import dev.mccastle91.createcontrolling.panel.CostPayer;
 import dev.mccastle91.createcontrolling.panel.FrequencyPair;
+import dev.mccastle91.createcontrolling.panel.PanelEditOps;
+import dev.mccastle91.createcontrolling.util.McCompat;
 import dev.mccastle91.createcontrolling.panel.PanelBlockEntity;
 import dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement;
 import dev.mccastle91.createcontrolling.panel.element.FloorButtonElement;
@@ -193,10 +196,16 @@ public class ContraptionGameTests {
         ItemStack contact = AllBlocks.REDSTONE_CONTACT.asStack();
         ActorSwitchElement actors = PanelElements.ACTOR_SWITCH.create();
         actors.setPos(2, 2);
-        actors.setFilter(contact);
         actors.setOn(false);
         actors.setFrequency(freq(Items.FLINT, Items.FEATHER));
-        build(helper, actors);
+        PanelBlockEntity placed = build(helper, actors);
+        // the filter goes in as the designer sends it: the third slot takes an actor's item and nothing else
+        setFilter(helper, placed, actors, new ItemStack(Items.STICK));
+        if (!filterOf(placed, actors).isEmpty())
+            throw new GameTestAssertException("A stick is no kind of actor: the filter should have refused it");
+        setFilter(helper, placed, actors, contact);
+        if (!ItemStack.isSameItem(filterOf(placed, actors), contact))
+            throw new GameTestAssertException("The filter should be the Redstone Contact, is " + filterOf(placed, actors));
         BlockPos local = CONSOLE.subtract(CABIN);
 
         helper.startSequence()
@@ -358,6 +367,19 @@ public class ContraptionGameTests {
         if (contraption.isActorTypeDisabled(kind) == running || actor.right.disabled == running)
             throw new GameTestAssertException("After " + after + " the contact should be " + (running ? "running" : "stopped")
                     + ": on the list=" + contraption.isActorTypeDisabled(kind) + ", actor disabled=" + actor.right.disabled);
+    }
+
+    private static void setFilter(GameTestHelper helper, PanelBlockEntity console, ActorSwitchElement part, ItemStack item) {
+        net.minecraft.nbt.CompoundTag op = new net.minecraft.nbt.CompoundTag();
+        op.putString(PanelEditOps.KEY_OP, PanelEditOps.OP_SET_FREQUENCY);
+        op.putUUID("Id", part.id());
+        op.putInt("Slot", ActorSwitchElement.FILTER_SLOT);
+        op.put("Item", McCompat.saveStack(item, helper.getLevel().registryAccess()));
+        PanelEditOps.apply(console, op, helper.getLevel().registryAccess(), CostPayer.FREE);
+    }
+
+    private static ItemStack filterOf(PanelBlockEntity console, ActorSwitchElement part) {
+        return ((ActorSwitchElement) console.getLayout().elementById(part.id()).orElseThrow()).filter();
     }
 
     private static String floorName(ElevatorContraption cabin, int index) {

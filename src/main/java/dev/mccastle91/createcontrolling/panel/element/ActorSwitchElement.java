@@ -1,57 +1,55 @@
 package dev.mccastle91.createcontrolling.panel.element;
 
-import dev.mccastle91.createcontrolling.api.PartOption;
 import dev.mccastle91.createcontrolling.util.McCompat;
-import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Create's Contraption Controls as a console part: a switch that lets the
- * actors of the contraption the console rides (drills, saws, deployers,
- * doors...) run, or stops them. Its filter names one kind of actor, as the
- * filter of a Contraption Controls block does; without one it switches them
- * all.
+ * Create's Contraption Controls as a console part, and made to look like its
+ * top plate: a square button between two red arrows. A press lets the actors
+ * of the contraption the console rides (drills, saws, deployers, doors...)
+ * run, or stops them; the arrows light while they are stopped. Its filter
+ * names one kind of actor, as the filter of a Contraption Controls block
+ * does, and shows on the button; without one it switches them all.
  *
- * <p>It is a switch and a receiver at once. The lever is thrown by hand. On
- * top of that a signal on its frequency holds the actors stopped for as long
- * as it lasts, whatever the lever says, the way redstone power holds a placed
- * Contraption Controls block off; that lets a Redstone Link on the ground
- * stop a contraption's actors.
+ * <p>It is a control and a receiver at once. On top of the button, a signal
+ * on its frequency holds the actors stopped for as long as it lasts, the way
+ * redstone power holds a placed Contraption Controls block off; that lets a
+ * Redstone Link on the ground stop a contraption's actors.
  *
  * <p>The part only holds this state. What carries the console applies it (see
  * compat/create/contraption); on a placed console it waits for the next assembly.
  */
-public class ActorSwitchElement extends ReceiverElement implements ColorableElement {
+public class ActorSwitchElement extends ReceiverElement {
 
     public static final String TAG_ON = "On";
     public static final String TAG_FILTER = "Filter";
-    public static final String TAG_COLOR = "Color";
     /** Whether a signal held the actors off when this was saved: read at assembly, before any link has spoken. */
     public static final String TAG_HELD = "Held";
-    public static final String OPTION_FILTER = "filter";
-    public static final DyeColor DEFAULT_COLOR = DyeColor.YELLOW;
+    /** The filter is set like a frequency, in a third slot after the frequency's two. */
+    public static final int FILTER_SLOT = 2;
 
     /** The items Create lets a Contraption Controls block be filtered by. */
     private static final TagKey<Item> CONTROLLED =
             TagKey.create(Registries.ITEM, McCompat.id("create", "contraption_controlled"));
 
+    /** How long the button stays down after a press. */
+    private static final int PRESS_TICKS = 6;
+    /** Rides above the four bits of the received strength in what clients are sent. */
+    private static final int PRESSED = 16;
+
     private boolean on = true;
     private ItemStack filter = ItemStack.EMPTY;
-    private DyeColor color = DEFAULT_COLOR;
     private boolean heldWhenSaved;
+    /** Runtime only; never saved. */
+    private int pressTicks;
 
     public ActorSwitchElement(PanelElementType<? extends ActorSwitchElement> type) {
         super(type);
@@ -65,8 +63,20 @@ public class ActorSwitchElement extends ReceiverElement implements ColorableElem
     @Override
     public boolean click(float localX, float localY, boolean sneaking) {
         on = !on;
-        sound(PartSound.lever(on));
+        if (pressTicks == 0)
+            sound(PartSound.button(true, false));
+        pressTicks = PRESS_TICKS;
         return true;
+    }
+
+    @Override
+    public boolean tick() {
+        if (pressTicks <= 0)
+            return false;
+        pressTicks--;
+        if (pressTicks == 0)
+            sound(PartSound.button(false, false));
+        return pressTicks == 0;
     }
 
     @Override
@@ -74,12 +84,12 @@ public class ActorSwitchElement extends ReceiverElement implements ColorableElem
         return true;
     }
 
-    /** Where the lever stands: on lets the actors run. */
+    /** What the button was last pressed to: on lets the actors run. */
     public boolean isOn() {
         return on;
     }
 
-    /** Throws the lever without a hand (someone switched the actors another way); true if it moved. */
+    /** Sets that without a press (someone switched the actors another way); true if it changed. */
     public boolean setOn(boolean on) {
         if (this.on == on)
             return false;
@@ -87,12 +97,16 @@ public class ActorSwitchElement extends ReceiverElement implements ColorableElem
         return true;
     }
 
+    public boolean isPressed() {
+        return pressTicks > 0;
+    }
+
     /** Whether a signal on the part's frequency (or a cable, or a computer) is holding the actors off. */
     public boolean held() {
         return receivedStrength() > 0;
     }
 
-    /** What the part asks for: the actors run with the lever on and no signal holding them. */
+    /** What the part asks for: the actors run when switched on with no signal holding them. */
     public boolean running() {
         return on && !held();
     }
@@ -111,45 +125,20 @@ public class ActorSwitchElement extends ReceiverElement implements ColorableElem
         this.filter = filter.isEmpty() ? ItemStack.EMPTY : filter.copyWithCount(1);
     }
 
-    /** Every item a filter can be, in an order client and server agree on. */
-    public static List<Item> filterChoices() {
-        List<Item> items = new ArrayList<>();
-        for (Holder<Item> holder : BuiltInRegistries.ITEM.getTagOrEmpty(CONTROLLED))
-            items.add(holder.value());
-        items.sort(Comparator.comparing(item -> BuiltInRegistries.ITEM.getKey(item).toString()));
-        return items;
+    /** Whether an item can be the filter: nothing (all actors), or what Create's own controls take. */
+    public static boolean acceptsFilter(ItemStack stack) {
+        return stack.isEmpty() || stack.is(CONTROLLED);
     }
 
     @Override
-    public DyeColor color() {
-        return color;
+    public int displayStrength() {
+        return receivedStrength() | (pressTicks > 0 ? PRESSED : 0);
     }
 
     @Override
-    public void setColor(DyeColor color) {
-        this.color = color == null ? DEFAULT_COLOR : color;
-    }
-
-    // --- Designer and integrations ---------------------------------------------
-
-    @Override
-    public List<PartOption> options() {
-        List<Item> choices = filterChoices();
-        int index = filter.isEmpty() ? 0 : choices.indexOf(filter.getItem()) + 1;
-        Component what = filter.isEmpty()
-                ? Component.translatable("gui.create_controlling.actor_filter.all") : filter.getHoverName();
-        return List.of(PartOption.stepper(OPTION_FILTER,
-                Component.translatable("gui.create_controlling.actor_filter", what), index, 0, choices.size(), 1));
-    }
-
-    @Override
-    public boolean setOption(String key, int value) {
-        if (!OPTION_FILTER.equals(key))
-            return false;
-        List<Item> choices = filterChoices();
-        setFilter(value <= 0 || choices.isEmpty()
-                ? ItemStack.EMPTY : new ItemStack(choices.get(Math.min(value, choices.size()) - 1)));
-        return true;
+    public void applyDisplayStrength(int strength) {
+        super.applyDisplayStrength(strength & 15);
+        pressTicks = (strength & PRESSED) != 0 ? 1 : 0;
     }
 
     @Override
@@ -163,7 +152,6 @@ public class ActorSwitchElement extends ReceiverElement implements ColorableElem
     @Override
     protected void saveOptions(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putBoolean(TAG_ON, on);
-        tag.putString(TAG_COLOR, color.getName());
         if (!filter.isEmpty())
             tag.put(TAG_FILTER, McCompat.saveStack(filter, registries));
         if (held())
@@ -173,7 +161,6 @@ public class ActorSwitchElement extends ReceiverElement implements ColorableElem
     @Override
     protected void loadOptions(CompoundTag tag, HolderLookup.Provider registries) {
         on = !tag.contains(TAG_ON) || tag.getBoolean(TAG_ON);
-        setColor(DyeColor.byName(tag.getString(TAG_COLOR), DEFAULT_COLOR));
         setFilter(tag.contains(TAG_FILTER) ? McCompat.loadStack(tag.getCompound(TAG_FILTER), registries) : ItemStack.EMPTY);
         heldWhenSaved = tag.getBoolean(TAG_HELD);
     }

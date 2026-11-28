@@ -103,8 +103,8 @@ These change the parts in the world (and in the dial window).
 | `marking` | `#1C1C1F` | Tick marks, slider slots, an unlit bar meter |
 | `pointer` | `#F0F0F0` | The line on a knob that shows where it points |
 | `lever_lamp` | `#FF2A1A` | The small lamp on an analog lever |
-| `actors_running` | `#3DDC5A` | The lamp on an actor switch while the contraption's actors run |
-| `actors_stopped` | `#E0352B` | The same lamp while they are stopped |
+| `floor_number_light` | `#FFFFFF` | A floor button's number when set to light (it glows, over a dark shadow) |
+| `floor_number_dark` | `#1C1C1F` | A floor button's number when set to dark |
 | `guarded_lever` | `#DDDDDD` | A guarded switch's lever tip |
 | `nixie_glass` | `#40F2C9A0` | Nixie tube glass; the first two digits are how solid it is |
 | `nixie_glow` | `#FF9A2E` | Nixie digits |

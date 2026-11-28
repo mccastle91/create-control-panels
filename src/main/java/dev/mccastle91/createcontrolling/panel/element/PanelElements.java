@@ -49,19 +49,21 @@ public final class PanelElements {
     public static final PanelElementType<DisplayBoardElement> DISPLAY_BOARD =
             PanelElementType.register("display_board", DisplayBoardElement::new, 12, 6, 1.125f);
 
-    // Parts that act on the contraption the console rides (see compat/create/contraption):
-    // Create's Contraption Controls, taken apart into a switch for actors and an elevator's panel
-    public static final PanelElementType<ActorSwitchElement> ACTOR_SWITCH =
-            PanelElementType.register("actor_switch", ActorSwitchElement::new, 3, 4, 2.25f);
-    public static final PanelElementType<FloorButtonElement> FLOOR_BUTTON =
-            PanelElementType.register("floor_button", FloorButtonElement::new, 3, 3, 1.5f);
-    public static final PanelElementType<FloorReadoutElement> FLOOR_READOUT =
-            PanelElementType.register("floor_readout", FloorReadoutElement::new, 8.5f, 4, 3.5f);
-
     // Passive; width is per-label, depth follows its text scale
     public static final PanelElementType<LabelElement> LABEL =
             PanelElementType.register("label", LabelElement::new,
                     LabelElement.DEFAULT_WIDTH, LabelElement.DEPTH_PER_SCALE, 0f);
+
+    // Parts that act on the contraption the console rides (see compat/create/contraption):
+    // Create's Contraption Controls, taken apart into a switch for actors and an elevator's panel.
+    // Registered last, so they share the palette's second page. The actor switch is Create's
+    // top plate at half size: 12 x 8 texels of its texture on 6 x 4 px.
+    public static final PanelElementType<ActorSwitchElement> ACTOR_SWITCH =
+            PanelElementType.register("actor_switch", ActorSwitchElement::new, 6, 4, 1.1f);
+    public static final PanelElementType<FloorButtonElement> FLOOR_BUTTON =
+            PanelElementType.register("floor_button", FloorButtonElement::new, 3, 3, 1.5f);
+    public static final PanelElementType<FloorReadoutElement> FLOOR_READOUT =
+            PanelElementType.register("floor_readout", FloorReadoutElement::new, 8.5f, 4, 3.5f);
 
     private PanelElements() {
     }

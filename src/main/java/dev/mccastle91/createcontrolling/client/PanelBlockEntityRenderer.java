@@ -138,7 +138,7 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
             else if (element instanceof DisplayBoardElement board)
                 displayBoard(p, font, panel, board);
             else if (element instanceof ActorSwitchElement actors)
-                actorSwitch(p, w, d, actors.isOn(), actors.running(), actors.held(), color(actors));
+                actorSwitch(p, actors, w, d, h);
             else if (element instanceof FloorButtonElement floor)
                 floorButton(p, font, floor, w, d, h, color(floor));
             else if (element instanceof FloorReadoutElement readout)
@@ -309,20 +309,39 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
     }
 
     /**
-     * A toggle switch on a wider plate, with a lamp in the corner like the
-     * analog lever's: green while the contraption's actors run, red while they
-     * are stopped (dim when the lever stopped them, bright when a signal holds them).
+     * The top plate of Create's Contraption Controls at half size, drawn from
+     * Create's own textures (in sprite px, where a Create texel is half a px):
+     * the dark plate, the square button standing out of its middle with the
+     * filter's item on it, and the arrows either side, dark while the actors
+     * run and lit red while they are stopped, as on Create's block.
      */
-    private void actorSwitch(ComponentPainter p, float w, float d, boolean on, boolean running, boolean held, int color) {
-        p.box(0, 0, 0, w, d, 0.25f, iron, 0xFFFFFFFF, light);
-        p.box(w / 2 - 0.65f, d / 2 - 0.65f, 0.25f, w / 2 + 0.65f, d / 2 + 0.65f, 0.6f, brass, 0xFFFFFFFF, light);
-        int lamp = running ? StyleColor.ACTORS_RUNNING.argb()
-                : scale(StyleColor.ACTORS_STOPPED.argb(), held ? 1f : 0.5f);
-        p.box(0.3f, 0.3f, 0.25f, 1.0f, 1.0f, 0.45f, component, lamp, running || held ? ComponentPainter.FULL_BRIGHT : light);
-        lever(p, w / 2, d / 2, 0.5f, on, LEVER_LENGTH, color);
+    private void actorSwitch(ComponentPainter p, ActorSwitchElement part, float w, float d, float h) {
+        TextureAtlasSprite plate = ComponentPainter.sprite(ComponentPainter.CONTROLS_PLATE);
+        TextureAtlasSprite arrows = ComponentPainter.sprite(ComponentPainter.CONTROLS_ARROWS);
+        int white = 0xFFFFFFFF;
+        float base = 0.5f;
+        p.box(0, 0, 0, w, d, base, iron, white, light);
+        p.textured(0, 0, w, d, base + LIFT, plate, 1, 9.5f, 7, 13.5f, white, light);
+        // Create's sheet holds eight frames of the arrows' sweep; the two it rests on are the first of each column
+        boolean stopped = !part.running();
+        float u = stopped ? 9 : 1;
+        int glow = stopped ? ComponentPainter.FULL_BRIGHT : light;
+        p.textured(0, 0.5f, 1.5f, d - 0.5f, base + 2 * LIFT, arrows, u, 0.5f, u + 1.5f, 3.5f, white, glow);
+        p.textured(w - 1.5f, 0.5f, w, d - 0.5f, base + 2 * LIFT, arrows, u + 4.5f, 0.5f, u + 6, 3.5f, white, glow);
+        float half = 1.525f, cx = w / 2, cy = d / 2;
+        float top = part.isPressed() ? base + (h - base) * 0.4f : h;
+        p.box(cx - half, cy - half, base, cx + half, cy + half, top, iron, white, light);
+        p.textured(cx - half, cy - half, cx + half, cy + half, top + LIFT, plate, 2.5f, 10, 5.5f, 13, white, light);
+        if (!part.filter().isEmpty())
+            p.item(part.filter(), cx, cy, top + 2 * LIFT, 1.9f, light);
     }
 
-    /** A button with its floor's number on the cap, which glows while that floor is where the cabin is going. */
+    /**
+     * A button with its floor's number on the cap, which glows while that
+     * floor is where the cabin is going. The number is drawn as Create draws
+     * a floor's name on its Contraption Controls: full-bright over a dark
+     * copy set off behind it; or, for a pale cap, plainly in a dark ink.
+     */
     private void floorButton(ComponentPainter p, Font font, FloorButtonElement button, float w, float d, float h, int color) {
         float bezel = 0.5f;
         boolean lit = button.isLit();
@@ -333,9 +352,15 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         String number = Integer.toString(button.floor());
         float lineHeight = number.length() > 1 ? 1.2f : 1.6f;
         float textWidth = font.width(number) * lineHeight / font.lineHeight;
-        p.faceText(font, number, button.x() + (w - textWidth) / 2,
-                button.y() + (d - lineHeight * ComponentPainter.GLYPH_HEIGHT) / 2, top + LIFT, lineHeight,
-                StyleColor.MARKING.argb(), glow);
+        float x = button.x() + (w - textWidth) / 2, y = button.y() + (d - lineHeight * ComponentPainter.GLYPH_HEIGHT) / 2;
+        if (button.lightNumber()) {
+            int ink = StyleColor.FLOOR_NUMBER_LIGHT.argb();
+            float off = 0.6f * lineHeight / font.lineHeight;
+            p.faceText(font, number, x + off, y + off, top + LIFT, lineHeight, scale(ink, 0.25f), light);
+            p.faceText(font, number, x, y, top + 2 * LIFT, lineHeight, ink, ComponentPainter.FULL_BRIGHT);
+        } else {
+            p.faceText(font, number, x, y, top + LIFT, lineHeight, StyleColor.FLOOR_NUMBER_DARK.argb(), glow);
+        }
     }
 
     /** The limits a knob marks: its lowest and highest value, where they aren't the scale's own ends. */

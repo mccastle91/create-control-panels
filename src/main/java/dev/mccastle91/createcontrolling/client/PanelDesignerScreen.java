@@ -580,6 +580,8 @@ public class PanelDesignerScreen extends Screen {
     private void sendFrequency(int slot, ItemStack stack) {
         if (selected() == null || minecraft == null || minecraft.player == null)
             return;
+        if (slot == FILTER_SLOT && !dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement.acceptsFilter(stack))
+            return;
         CompoundTag tag = op(PanelEditOps.OP_SET_FREQUENCY);
         tag.putInt("Slot", slot);
         if (!stack.isEmpty())
@@ -605,12 +607,12 @@ public class PanelDesignerScreen extends Screen {
      * slot in the chooser while it is open, else the slot in the designer.
      */
     public Rect2i frequencyDropArea(int slot) {
+        PanelElement element = selected();
+        if (element == null || !hasFrequency(element) || slot >= slotCount(element))
+            return null;
         if (choosing)
             return new Rect2i(chooserSlotX(slot), chooserY() + CHOOSER_SLOTS_Y, 18, 18);
-        PanelElement element = selected();
-        if (element == null || !hasFrequency(element))
-            return null;
-        return new Rect2i(sideX + slot * 22, freqSlotY, 18, 18);
+        return new Rect2i(sideSlotX(slot), freqSlotY, 18, 18);
     }
 
     /** Sets a frequency slot from an item dragged in from JEI. */
@@ -851,13 +853,42 @@ public class PanelDesignerScreen extends Screen {
     }
 
     private int chooserSlotX(int slot) {
-        return chooserX() + CHOOSER_WIDTH / 2 - 20 + slot * 22;
+        // an actor switch's filter slot stands a little apart from the frequency's two
+        return chooserX() + CHOOSER_WIDTH / 2 - 20 + slot * 22 + (slot == FILTER_SLOT ? 12 : 0);
+    }
+
+    // An actor switch has a third slot beside its frequency's two: the kind of actor it switches,
+    // set the same way (see ActorSwitchElement). In the designer it sits at the column's right edge.
+    private static final int FILTER_SLOT = dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement.FILTER_SLOT;
+
+    private static int slotCount(PanelElement element) {
+        return element instanceof dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement ? 3 : 2;
+    }
+
+    private int sideSlotX(int slot) {
+        return slot == FILTER_SLOT ? sideX + COLUMN - 2 - 18 : sideX + slot * 22;
+    }
+
+    private static ItemStack slotStack(PanelElement element, int slot) {
+        if (slot == FILTER_SLOT)
+            return element instanceof dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement actors ? actors.filter() : ItemStack.EMPTY;
+        return slot == 0 ? element.frequency().first() : element.frequency().second();
+    }
+
+    /** Whether a slot would take the item being dragged: a frequency takes anything, the filter only actors. */
+    private static boolean slotTakes(int slot, ItemStack stack) {
+        return slot != FILTER_SLOT || dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement.acceptsFilter(stack);
+    }
+
+    private static Component slotHint(int slot) {
+        return Component.translatable(slot == FILTER_SLOT
+                ? "gui.create_controlling.actor_slot_hint" : "gui.create_controlling.frequency_slot_hint");
     }
 
     /** The chooser's frequency slot under the mouse, or -1. */
     private int chooserSlotAt(double mouseX, double mouseY) {
         int y = chooserY() + CHOOSER_SLOTS_Y;
-        for (int slot = 0; slot < 2; slot++) {
+        for (int slot = 0; slot < slotCount(selected()); slot++) {
             int x = chooserSlotX(slot);
             if (mouseX >= x && mouseX < x + 18 && mouseY >= y && mouseY < y + 18)
                 return slot;
@@ -929,8 +960,8 @@ public class PanelDesignerScreen extends Screen {
 
         PanelElement element = selected();
         if (element != null && hasFrequency(element) && mouseY >= freqSlotY && mouseY < freqSlotY + 18) {
-            for (int slot = 0; slot < 2; slot++) {
-                int x = sideX + slot * 22;
+            for (int slot = 0; slot < slotCount(element); slot++) {
+                int x = sideSlotX(slot);
                 if (mouseX >= x && mouseX < x + 18) {
                     if (button == 1)
                         sendFrequency(slot, ItemStack.EMPTY); // right-click clears
@@ -983,7 +1014,7 @@ public class PanelDesignerScreen extends Screen {
         if (choosing) {
             // dropping a carried item on a frequency slot sets it; anywhere else lets it go
             int slot = chooserSlotAt(mouseX, mouseY);
-            if (button == 0 && slot >= 0 && !carried.isEmpty())
+            if (button == 0 && slot >= 0 && !carried.isEmpty() && slotTakes(slot, carried))
                 sendFrequency(slot, carried);
             carried = ItemStack.EMPTY;
             return true;
@@ -1079,6 +1110,8 @@ public class PanelDesignerScreen extends Screen {
                 : element.displayStrength() > 0 || element.transmittedStrength() > 0;
         if (element instanceof ColorableElement colorable)
             return argb(colorable.color(), active ? 1.0f : 0.6f);
+        if (element instanceof dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement)
+            return StyleColor.PART_BOARD.argb(); // Create's dark plate
         if (element instanceof ReceiverElement)
             return (active ? StyleColor.PART_GAUGE_ACTIVE : StyleColor.PART_GAUGE).argb(); // brass-housed gauges
         if (element instanceof DisplayBoardElement)
@@ -1440,10 +1473,15 @@ public class PanelDesignerScreen extends Screen {
             int fill = Math.round((x1 - x0 - 4) * analog.value() / 15f);
             graphics.fill(x0 + 2, y1 - 3, x0 + 2 + fill, y1 - 2, StyleColor.PART_MARK_LIGHT.argb());
         } else if (e instanceof dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement actors) {
-            // the lever as on a toggle switch, and its lamp in the corner
-            graphics.fill(cx - 1, actors.isOn() ? y0 + 3 : cy, cx + 1, actors.isOn() ? cy : y1 - 3, StyleColor.PART_MARK_DARK.argb());
-            graphics.fill(x0 + 2, y0 + 2, x0 + 6, y0 + 6,
-                    (actors.running() ? StyleColor.ACTORS_RUNNING : StyleColor.ACTORS_STOPPED).argb());
+            // Create's top plate: the square button with the filter's item on it, an arrow either side, red while stopped
+            int half = (y1 - y0) * 3 / 8;
+            int arrow = (actors.running() ? StyleColor.PART_MARK_DARK : StyleColor.NEEDLE).argb();
+            graphics.fill(x0 + 3, cy - half + 3, x0 + 8, cy + half - 3, arrow);
+            graphics.fill(x1 - 8, cy - half + 3, x1 - 3, cy + half - 3, arrow);
+            graphics.fill(cx - half, cy - half, cx + half, cy + half, StyleColor.PART_PLAIN.argb());
+            frame(graphics, cx - half, cy - half, cx + half, cy + half, StyleColor.PART_MARK_LIGHT.argb());
+            if (!actors.filter().isEmpty())
+                graphics.renderItem(actors.filter(), cx - 8, cy - 8);
         } else if (e instanceof dev.mccastle91.createcontrolling.panel.element.FloorButtonElement floor) {
             graphics.drawCenteredString(font, Integer.toString(floor.floor()), cx, cy - 4, StyleColor.TEXT.argb());
         } else if (e instanceof SwitchElement toggle) {
@@ -1489,20 +1527,30 @@ public class PanelDesignerScreen extends Screen {
 
     /** A frequency slot: an item slot ringed in its link colour, brighter while lit. */
     private void frequencySlot(GuiGraphics graphics, int x, int y, int slot, boolean lit, ItemStack stack) {
-        graphics.fill(x, y, x + 18, y + 18, (lit ? FREQ_COLORS_LIT : FREQ_COLORS)[slot].argb());
+        StyleColor ring = slot == FILTER_SLOT ? (lit ? StyleColor.PART_GAUGE_ACTIVE : StyleColor.PART_GAUGE)
+                : (lit ? FREQ_COLORS_LIT : FREQ_COLORS)[slot];
+        graphics.fill(x, y, x + 18, y + 18, ring.argb());
         ConsoleGui.slot(graphics, theme(), x + 1, y + 1, 16);
         if (!stack.isEmpty())
             graphics.renderItem(stack, x + 1, y + 1);
     }
 
     private void renderFrequencySlots(GuiGraphics graphics, PanelElement element, int mouseX, int mouseY) {
-        for (int slot = 0; slot < 2; slot++) {
-            int x = sideX + slot * 22;
+        if (slotCount(element) > FILTER_SLOT) {
+            Component actors = Component.translatable("gui.create_controlling.actor_slot");
+            graphics.drawString(font, actors, sideX + COLUMN - 2 - font.width(actors), freqLabelY, theme().accent);
+        }
+        for (int slot = 0; slot < slotCount(element); slot++) {
+            int x = sideSlotX(slot);
             boolean hovered = mouseX >= x && mouseX < x + 18 && mouseY >= freqSlotY && mouseY < freqSlotY + 18;
-            ItemStack stack = slot == 0 ? element.frequency().first() : element.frequency().second();
+            ItemStack stack = slotStack(element, slot);
             frequencySlot(graphics, x, freqSlotY, slot, hovered, stack);
-            if (hovered && !stack.isEmpty() && colorTarget == null)
-                graphics.renderTooltip(font, stack, mouseX, mouseY);
+            if (hovered && colorTarget == null) {
+                if (!stack.isEmpty())
+                    graphics.renderTooltip(font, stack, mouseX, mouseY);
+                else if (slot == FILTER_SLOT)
+                    graphics.renderTooltip(font, slotHint(slot), mouseX, mouseY);
+            }
         }
     }
 
@@ -1523,11 +1571,12 @@ public class PanelDesignerScreen extends Screen {
 
         boolean dragging = !carried.isEmpty();
         int hoveredSlot = chooserSlotAt(mouseX, mouseY);
-        for (int slot = 0; slot < 2; slot++) {
+        for (int slot = 0; slot < slotCount(element); slot++) {
             int x = chooserSlotX(slot), y = oy + CHOOSER_SLOTS_Y;
-            ItemStack stack = slot == 0 ? element.frequency().first() : element.frequency().second();
-            frequencySlot(graphics, x, y, slot, slot == hoveredSlot || dragging, stack);
-            if (dragging && slot == hoveredSlot)
+            ItemStack stack = slotStack(element, slot);
+            boolean takes = dragging && slotTakes(slot, carried);
+            frequencySlot(graphics, x, y, slot, takes || !dragging && slot == hoveredSlot, stack);
+            if (takes && slot == hoveredSlot)
                 graphics.fill(x + 1, y + 1, x + 17, y + 17, StyleColor.SLOT_DROP.argb());
         }
 
@@ -1558,9 +1607,9 @@ public class PanelDesignerScreen extends Screen {
             graphics.renderItem(carried, mouseX - 8, mouseY - 8);
             graphics.pose().popPose();
         } else if (hoveredSlot >= 0) {
-            ItemStack stack = hoveredSlot == 0 ? element.frequency().first() : element.frequency().second();
+            ItemStack stack = slotStack(element, hoveredSlot);
             if (stack.isEmpty())
-                graphics.renderTooltip(font, Component.translatable("gui.create_controlling.frequency_slot_hint"), mouseX, mouseY);
+                graphics.renderTooltip(font, slotHint(hoveredSlot), mouseX, mouseY);
             else
                 graphics.renderTooltip(font, stack, mouseX, mouseY);
         } else if (overDoneButton(mouseX, mouseY)) {

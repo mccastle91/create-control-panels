@@ -32,6 +32,9 @@ public final class ComponentPainter {
     public static final ResourceLocation BOARD_FRONT = McCompat.id("create", "block/flap_display_front");
     public static final ResourceLocation BOARD_SIDE = McCompat.id("create", "block/flap_display_side");
     public static final ResourceLocation BOARD_EDGE = McCompat.id("create", "block/flap_display_top");
+    /** Create's Contraption Controls: its casing and top plate, and the sheet of its arrows' eight frames. */
+    public static final ResourceLocation CONTROLS_PLATE = McCompat.id("create", "block/contraption_controls_frame");
+    public static final ResourceLocation CONTROLS_ARROWS = McCompat.id("create", "block/contraption_controls_indicator");
 
     private static final float PX = 1 / 16f;
 
@@ -118,6 +121,45 @@ public final class ComponentPainter {
     public void plate(float x0, float y0, float x1, float y1, float z, TextureAtlasSprite sprite, int argb, int light) {
         face(new Vector3f(x0, y0, z), new Vector3f(x1 - x0, 0, 0), new Vector3f(0, y1 - y0, 0),
                 new Vector3f(0, 0, 1), sprite, argb, light);
+    }
+
+    /**
+     * A flat rectangle at height {@code z} showing part of a texture: sprite
+     * px ({@code u0}, {@code v0}) at its far left corner, ({@code u1}, {@code v1})
+     * at its near right one.
+     */
+    public void textured(float x0, float y0, float x1, float y1, float z, TextureAtlasSprite sprite,
+                         float u0, float v0, float u1, float v1, int argb, int light) {
+        mapped(new Vector3f(x0, y0, z), new Vector3f(x1 - x0, 0, 0), new Vector3f(0, y1 - y0, 0), new Vector3f(0, 0, 1),
+                new float[] { u0, u1, u1, u0 }, new float[] { v0, v0, v1, v1 }, sprite, argb, light);
+    }
+
+    /**
+     * An item lying flat on the part, centred on ({@code x}, {@code y}) at
+     * height {@code z} and about {@code size} px across, its top towards the
+     * far edge: drawn as Create draws a filter's item on its block, pressed
+     * nearly flat so a block item doesn't stand out of the part.
+     */
+    public void item(net.minecraft.world.item.ItemStack stack, float x, float y, float z, float size, int light) {
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 at = toBlock(new Vector3f(x, y, z));
+        // the item's front faces -z, as in an item frame: so -z points out of the face, and x and y follow
+        Vec3 right = face.u().scale(-1), up = face.v().scale(-1), back = face.normal().scale(-1);
+        Matrix4f turned = new Matrix4f(pose)
+                .translate((float) at.x, (float) at.y, (float) at.z)
+                .mul(new Matrix4f(
+                        (float) right.x, (float) right.y, (float) right.z, 0,
+                        (float) up.x, (float) up.y, (float) up.z, 0,
+                        (float) back.x, (float) back.y, (float) back.z, 0,
+                        0, 0, 0, 1));
+        // flat items fill the model's whole square, block items half of it
+        boolean block = mc.getItemRenderer().getModel(stack, mc.level, null, 0).isGui3d();
+        float k = size * PX * (block ? 2 : 1);
+        com.mojang.blaze3d.vertex.PoseStack poses = new com.mojang.blaze3d.vertex.PoseStack();
+        turned.normalize3x3(poses.last().normal());
+        poses.last().pose().set(turned.scale(k, k, k / 32));
+        mc.getItemRenderer().renderStatic(stack, net.minecraft.world.item.ItemDisplayContext.FIXED, light,
+                net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, poses, buffers, mc.level, 0);
     }
 
     /**
