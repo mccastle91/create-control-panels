@@ -60,6 +60,11 @@ public enum StyleColor {
     POINTER("pointer", 0xFFF0F0F0),
     /** The small lamp on an analog lever. */
     LEVER_LAMP("lever_lamp", 0xFFFF2A1A),
+    /** A floor button's number: glowing light, as on Create's Contraption Controls, or printed dark. */
+    FLOOR_NUMBER_LIGHT("floor_number_light", 0xFFFFFFFF),
+    FLOOR_NUMBER_DARK("floor_number_dark", 0xFF1C1C1F),
+    /** A floor selector's floor while it is not the one the cabin is called to: Create's orange. */
+    FLOOR_PICKED("floor_picked", 0xFFEE9246),
     /** A guarded switch's lever tip. */
     GUARDED_LEVER("guarded_lever", 0xFFDDDDDD),
     /** Nixie tube glass; its alpha is how see-through it is. */

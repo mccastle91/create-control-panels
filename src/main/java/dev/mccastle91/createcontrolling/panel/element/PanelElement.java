@@ -286,6 +286,15 @@ public abstract class PanelElement {
     public void applyDisplayStrength(int strength) {
     }
 
+    /** Transient text synced to clients beside {@link #displayStrength()} (a floor's name); never saved. */
+    public String displayText() {
+        return "";
+    }
+
+    /** Client-side application of a synced {@link #displayText()}. */
+    public void applyDisplayText(String text) {
+    }
+
     // --- Hooks for parts the designer and integrations don't know (add-ons) ----
 
     /**

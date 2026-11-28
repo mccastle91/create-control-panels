@@ -75,6 +75,9 @@ public final class AnalogDrag {
             return;
         if (usesConsoleItself(mc.player.getMainHandItem()) || holdsCableTool(mc.player))
             return;
+        // a part on a contraption in front of everything: Create hands that click to ContraptionConsoles
+        if (ContraptionConsoles.aim() != null)
+            return;
         Aim aim = aimedAnalog(mc);
         if (aim == null)
             return;

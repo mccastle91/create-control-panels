@@ -89,6 +89,9 @@ public final class ComponentCosts {
         cost(PanelElements.NIXIE, "create:nixie_tube", 1);
         cost(PanelElements.NIXIE_STRIP, "create:nixie_tube", 2);
         cost(PanelElements.DISPLAY_BOARD, "create:display_board", 1);
+        cost(PanelElements.ACTOR_SWITCH, "create:contraption_controls", 1);
+        cost(PanelElements.FLOOR_BUTTON, "#minecraft:wooden_buttons", 1, "minecraft:glowstone_dust", 1);
+        cost(PanelElements.FLOOR_READOUT, "create:nixie_tube", 2);
         cost(PanelElements.LABEL, ANY_DYE, 1);
     }
 

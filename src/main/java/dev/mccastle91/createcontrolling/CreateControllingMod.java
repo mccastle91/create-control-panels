@@ -7,6 +7,7 @@ import dev.mccastle91.createcontrolling.compat.create.ClipboardFrequencies;
 import dev.mccastle91.createcontrolling.compat.drivebysable.DriveBySableCompat;
 //?}
 import dev.mccastle91.createcontrolling.compat.create.CreateLinkPlatform;
+import dev.mccastle91.createcontrolling.compat.create.contraption.ConsoleMovement;
 import dev.mccastle91.createcontrolling.config.CCClientConfigSpec;
 import dev.mccastle91.createcontrolling.config.CCConfigSpec;
 import dev.mccastle91.createcontrolling.link.CCLink;
@@ -58,6 +59,13 @@ public class CreateControllingMod {
         CCLink.PLATFORM = new CreateLinkPlatform();
         CCNetwork.register(modEventBus);
         ClipboardFrequencies.init();
+        //? if neoforge {
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ConsoleMovement::onStartTracking);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ConsoleMovement::onEntityLeave);
+        //?} else {
+        /*net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ConsoleMovement::onStartTracking);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ConsoleMovement::onEntityLeave);
+        *///?}
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::onConfigLoading);
         modEventBus.addListener(this::onConfigReloading);

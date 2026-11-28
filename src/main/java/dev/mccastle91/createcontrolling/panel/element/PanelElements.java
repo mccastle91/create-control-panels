@@ -54,6 +54,17 @@ public final class PanelElements {
             PanelElementType.register("label", LabelElement::new,
                     LabelElement.DEFAULT_WIDTH, LabelElement.DEPTH_PER_SCALE, 0f);
 
+    // Parts that act on the contraption the console rides (see compat/create/contraption):
+    // Create's Contraption Controls, taken apart into a switch for actors and an elevator's panel.
+    // Registered last, so they share the palette's second page. The actor switch is Create's
+    // top plate at half size: 12 x 8 texels of its texture on 6 x 4 px.
+    public static final PanelElementType<ActorSwitchElement> ACTOR_SWITCH =
+            PanelElementType.register("actor_switch", ActorSwitchElement::new, 6, 4, 1.1f);
+    public static final PanelElementType<FloorButtonElement> FLOOR_BUTTON =
+            PanelElementType.register("floor_button", FloorButtonElement::new, 3, 3, 1.5f);
+    public static final PanelElementType<FloorReadoutElement> FLOOR_READOUT =
+            PanelElementType.register("floor_readout", FloorReadoutElement::new, 8.5f, 4, 3.5f);
+
     private PanelElements() {
     }
 

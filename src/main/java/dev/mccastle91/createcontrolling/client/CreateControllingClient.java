@@ -58,6 +58,8 @@ public final class CreateControllingClient {
         CCClientHooks.SEND_BLUEPRINT_EDIT = CCNetwork::sendBlueprintEditToServer;
         CCClientHooks.CLIENT_PLAYER = () -> Minecraft.getInstance().player;
         CCClientHooks.SHIFT_DOWN = net.minecraft.client.gui.screens.Screen::hasShiftDown;
+        dev.mccastle91.createcontrolling.compat.create.contraption.ConsoleMovingInteraction.CLIENT_CLICK = ContraptionConsoles::click;
+        dev.mccastle91.createcontrolling.network.ContraptionSyncPayload.CLIENT_HANDLER = ContraptionConsoles::sync;
         modEventBus.addListener(CreateControllingClient::clientSetup);
         modEventBus.addListener(CreateControllingClient::registerRenderers);
         modEventBus.addListener(CreateControllingClient::swapConsoleModels);
@@ -67,12 +69,14 @@ public final class CreateControllingClient {
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onMouseScroll);
         NeoForge.EVENT_BUS.addListener(AnalogDrag::onUseKey);
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onHighlight);
+        NeoForge.EVENT_BUS.addListener(ContraptionConsoles::onRenderStage);
         NeoForge.EVENT_BUS.addListener(CreateControllingClient::onPlaySound);
         //?} else {
         /*MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onPlaySound);
         MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onMouseScroll);
         MinecraftForge.EVENT_BUS.addListener(AnalogDrag::onUseKey);
         MinecraftForge.EVENT_BUS.addListener(CreateControllingClient::onHighlight);
+        MinecraftForge.EVENT_BUS.addListener(ContraptionConsoles::onRenderStage);
         *///?}
         PonderIndex.addPlugin(new CCPonderPlugin());
     }
@@ -154,13 +158,13 @@ public final class CreateControllingClient {
             event.setCanceled(true);
     }
 
-    /** Sneak + scroll while aiming at a knob or slider nudges it, analog-lever style. */
+    /**
+     * Sneak + scroll while aiming at a knob or slider nudges it, analog-lever
+     * style; a plain scroll over a floor selector on an elevator picks a floor.
+     */
     private static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.screen != null || !mc.player.isShiftKeyDown() || AnalogDrag.holdsCableTool(mc.player))
-            return;
-        AnalogDrag.Aim aim = AnalogDrag.aimedAnalog(mc);
-        if (aim == null)
+        if (mc.player == null || mc.screen != null)
             return;
         //? if neoforge {
         int delta = (int) Math.signum(event.getScrollDeltaY());
@@ -168,6 +172,16 @@ public final class CreateControllingClient {
         /*int delta = (int) Math.signum(event.getScrollDelta());
         *///?}
         if (delta == 0)
+            return;
+        // a console on a contraption is in front of whatever block of the world is behind it
+        if (ContraptionConsoles.scroll(delta, mc.player.isShiftKeyDown())) {
+            event.setCanceled(true);
+            return;
+        }
+        if (!mc.player.isShiftKeyDown() || AnalogDrag.holdsCableTool(mc.player))
+            return;
+        AnalogDrag.Aim aim = AnalogDrag.aimedAnalog(mc);
+        if (aim == null)
             return;
         CompoundTag op = new CompoundTag();
         op.putString(PanelEditOps.KEY_OP, PanelEditOps.OP_ADJUST);

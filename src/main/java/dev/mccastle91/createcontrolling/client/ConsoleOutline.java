@@ -58,6 +58,15 @@ public final class ConsoleOutline {
         return true;
     }
 
+    /**
+     * The highlight of one part of a console that is not a block of the world
+     * (it rides a contraption); the pose stands at the corner of its block.
+     */
+    static void part(PanelBlockEntity panel, ConsolePicker.Pick pick, PoseStack poseStack, MultiBufferSource buffers) {
+        Lines lines = new Lines(buffers.getBuffer(RenderType.lines()), poseStack.last());
+        box(lines, PanelFaceGeometry.of(panel.getBlockState(), panel.shape()), pick.box());
+    }
+
     /** The box the click ray hit ({x0, y0, z0, x1, y1, z1} in face px), standing on the face. */
     private static void box(Lines lines, PanelFaceGeometry face, float[] box) {
         double x0 = box[0], y0 = box[1], z0 = box[2], x1 = box[3], y1 = box[4], z1 = box[5];

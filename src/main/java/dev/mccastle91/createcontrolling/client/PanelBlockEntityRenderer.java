@@ -19,6 +19,9 @@ import dev.mccastle91.createcontrolling.panel.element.LabelElement;
 import dev.mccastle91.createcontrolling.panel.element.LampElement;
 import dev.mccastle91.createcontrolling.panel.element.LatchingButtonElement;
 import dev.mccastle91.createcontrolling.panel.element.NeedleMeterElement;
+import dev.mccastle91.createcontrolling.panel.element.ActorSwitchElement;
+import dev.mccastle91.createcontrolling.panel.element.FloorButtonElement;
+import dev.mccastle91.createcontrolling.panel.element.FloorReadoutElement;
 import dev.mccastle91.createcontrolling.panel.element.NixieElement;
 import dev.mccastle91.createcontrolling.panel.element.NixieStripElement;
 import dev.mccastle91.createcontrolling.panel.element.PanelElement;
@@ -134,6 +137,12 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
                 nixieStrip(p, font, panel, strip);
             else if (element instanceof DisplayBoardElement board)
                 displayBoard(p, font, panel, board);
+            else if (element instanceof ActorSwitchElement actors)
+                actorSwitch(p, font, actors, w, d, h);
+            else if (element instanceof FloorButtonElement floor)
+                floorButton(p, font, floor, w, d, h, color(floor));
+            else if (element instanceof FloorReadoutElement readout)
+                tubes(p, font, readout, readout.glyphs());
             else if (element.type().id().indexOf(':') >= 0)
                 // another mod's part with no renderer registered: a plain plate, so it can be seen and clicked
                 p.box(0, 0, 0, w, d, Math.max(0.25f, h), iron, 0xFFFFFFFF, light);
@@ -297,6 +306,83 @@ public class PanelBlockEntityRenderer<T extends PanelBlockEntity> implements Blo
         p.box(-r, -r, 0, r, r, rod, iron, 0xFFFFFFFF, light);
         p.box(-r, -r, rod, r, r, AnalogLeverElement.HANDLE_LENGTH, component, color, light);
         p.pop();
+    }
+
+    /**
+     * The top plate of Create's Contraption Controls at half size, drawn from
+     * Create's own textures (in sprite px, where a Create texel is half a px):
+     * the dark plate, the square button standing out of its middle with the
+     * filter's item on it, and the arrows either side, dark while the actors
+     * run and lit red while they are stopped, as on Create's block.
+     *
+     * As an elevator's floor selector it shows the picked floor's name on
+     * the button, the way Create does: white while that floor is where the
+     * cabin is called to, orange while it is not, over a dark copy set off
+     * behind. The arrows rest dark and sweep while the cabin travels.
+     */
+    private void actorSwitch(ComponentPainter p, Font font, ActorSwitchElement part, float w, float d, float h) {
+        TextureAtlasSprite plate = ComponentPainter.sprite(ComponentPainter.CONTROLS_PLATE);
+        TextureAtlasSprite arrows = ComponentPainter.sprite(ComponentPainter.CONTROLS_ARROWS);
+        int white = 0xFFFFFFFF;
+        float base = 0.5f;
+        p.box(0, 0, 0, w, d, base, iron, white, light);
+        p.textured(0, 0, w, d, base + LIFT, plate, 1, 9.5f, 7, 13.5f, white, light);
+        // Create's sheet holds eight frames of the arrows' sweep, four to a column; the two it rests on
+        // are the first of each column. A selector runs through them while the cabin travels.
+        boolean selector = !part.floorName().isEmpty();
+        int frame = selector ? 0 : part.running() ? 0 : 4;
+        if (selector && part.cabinTravel() != 0 && Minecraft.getInstance().level != null) {
+            int step = (int) (Minecraft.getInstance().level.getGameTime() / 2 % 8);
+            frame = part.cabinTravel() > 0 ? step : 7 - step;
+        }
+        float u = frame < 4 ? 1 : 9, v = 0.5f + (frame % 4) * 4;
+        int glow = frame == 0 ? light : ComponentPainter.FULL_BRIGHT;
+        p.textured(0, 0.5f, 1.5f, d - 0.5f, base + 2 * LIFT, arrows, u, v, u + 1.5f, v + 3, white, glow);
+        p.textured(w - 1.5f, 0.5f, w, d - 0.5f, base + 2 * LIFT, arrows, u + 4.5f, v, u + 6, v + 3, white, glow);
+        float half = 1.525f, cx = w / 2, cy = d / 2;
+        float top = part.isPressed() ? base + (h - base) * 0.4f : h;
+        p.box(cx - half, cy - half, base, cx + half, cy + half, top, iron, white, light);
+        p.textured(cx - half, cy - half, cx + half, cy + half, top + LIFT, plate, 2.5f, 10, 5.5f, 13, white, light);
+        if (selector) {
+            String name = part.floorName();
+            float room = 2 * half - 0.5f;
+            float lineHeight = Math.min(1.7f, room * font.lineHeight / Math.max(1, font.width(name)));
+            float x = part.x() + cx - font.width(name) * lineHeight / font.lineHeight / 2;
+            float y = part.y() + cy - lineHeight * ComponentPainter.GLYPH_HEIGHT / 2;
+            int ink = (part.floorIsTarget() ? StyleColor.FLOOR_NUMBER_LIGHT : StyleColor.FLOOR_PICKED).argb();
+            float off = 0.6f * lineHeight / font.lineHeight;
+            p.faceText(font, name, x + off, y + off, top + 2 * LIFT, lineHeight, scale(ink, 0.25f), light);
+            p.faceText(font, name, x, y, top + 3 * LIFT, lineHeight, ink, ComponentPainter.FULL_BRIGHT);
+        } else if (!part.filter().isEmpty()) {
+            p.item(part.filter(), cx, cy, top + 2 * LIFT, 1.9f, light);
+        }
+    }
+
+    /**
+     * A button with its floor's number on the cap, which glows while that
+     * floor is where the cabin is going. The number is drawn as Create draws
+     * a floor's name on its Contraption Controls: full-bright over a dark
+     * copy set off behind it; or, for a pale cap, plainly in a dark ink.
+     */
+    private void floorButton(ComponentPainter p, Font font, FloorButtonElement button, float w, float d, float h, int color) {
+        float bezel = 0.5f;
+        boolean lit = button.isLit();
+        int glow = lit ? ComponentPainter.FULL_BRIGHT : light;
+        p.box(0, 0, 0, w, d, bezel, brass, 0xFFFFFFFF, light);
+        float top = button.isPressed() ? h - bezel * 0.8f : h;
+        p.box(bezel, bezel, bezel, w - bezel, d - bezel, top, component, lit ? color : scale(color, 0.55f), glow);
+        String number = Integer.toString(button.floor());
+        float lineHeight = number.length() > 1 ? 1.2f : 1.6f;
+        float textWidth = font.width(number) * lineHeight / font.lineHeight;
+        float x = button.x() + (w - textWidth) / 2, y = button.y() + (d - lineHeight * ComponentPainter.GLYPH_HEIGHT) / 2;
+        if (button.lightNumber()) {
+            int ink = StyleColor.FLOOR_NUMBER_LIGHT.argb();
+            float off = 0.6f * lineHeight / font.lineHeight;
+            p.faceText(font, number, x + off, y + off, top + LIFT, lineHeight, scale(ink, 0.25f), light);
+            p.faceText(font, number, x, y, top + 2 * LIFT, lineHeight, ink, ComponentPainter.FULL_BRIGHT);
+        } else {
+            p.faceText(font, number, x, y, top + LIFT, lineHeight, StyleColor.FLOOR_NUMBER_DARK.argb(), glow);
+        }
     }
 
     /** The limits a knob marks: its lowest and highest value, where they aren't the scale's own ends. */

@@ -45,7 +45,16 @@ public class AnalogDragScreen extends Screen {
     private static final float DIAL_SCALE = 14f;
     private static final int PAD = 8;
 
-    private final BlockPos pos;
+    /** The console the part is on, and the way a new value reaches the server: a block of the world, or one on a contraption. */
+    public interface Target {
+        /** The console as the client has it now; null once it is gone, which ends the drag. */
+        @org.jetbrains.annotations.Nullable
+        PanelBlockEntity console();
+
+        void send(UUID elementId, int value);
+    }
+
+    private final Target target;
     private final UUID elementId;
     private final boolean popup;
     private final boolean vertical;
@@ -63,8 +72,27 @@ public class AnalogDragScreen extends Screen {
     private boolean changed;
 
     public AnalogDragScreen(BlockPos pos, AnalogElement element, boolean popup) {
+        this(new Target() {
+            @Override
+            public PanelBlockEntity console() {
+                net.minecraft.client.multiplayer.ClientLevel level = net.minecraft.client.Minecraft.getInstance().level;
+                return level != null && level.getBlockEntity(pos) instanceof PanelBlockEntity panel ? panel : null;
+            }
+
+            @Override
+            public void send(UUID elementId, int value) {
+                CompoundTag op = new CompoundTag();
+                op.putString(PanelEditOps.KEY_OP, PanelEditOps.OP_SET_VALUE);
+                op.putUUID("Id", elementId);
+                op.putInt("Value", value);
+                CCNetwork.sendEditToServer(pos, op);
+            }
+        }, element, popup);
+    }
+
+    public AnalogDragScreen(Target target, AnalogElement element, boolean popup) {
         super(Component.empty());
-        this.pos = pos;
+        this.target = target;
         this.elementId = element.id();
         this.popup = popup;
         this.vertical = element.dragsVertically();
@@ -74,8 +102,8 @@ public class AnalogDragScreen extends Screen {
     }
 
     private AnalogElement element() {
-        if (minecraft == null || minecraft.level == null
-                || !(minecraft.level.getBlockEntity(pos) instanceof PanelBlockEntity panel))
+        PanelBlockEntity panel = target.console();
+        if (panel == null)
             return null;
         return panel.getLayout().elementById(elementId).orElse(null) instanceof AnalogElement analog ? analog : null;
     }
@@ -148,11 +176,7 @@ public class AnalogDragScreen extends Screen {
             return;
         value = clamped;
         changed = true;
-        CompoundTag op = new CompoundTag();
-        op.putString(PanelEditOps.KEY_OP, PanelEditOps.OP_SET_VALUE);
-        op.putUUID("Id", elementId);
-        op.putInt("Value", value);
-        CCNetwork.sendEditToServer(pos, op);
+        target.send(elementId, value);
         // a soft click per step, rising a little with the value; heard here at once,
         // while the console plays the same click to everyone else nearby
         minecraft.getSoundManager().play(
@@ -201,8 +225,8 @@ public class AnalogDragScreen extends Screen {
         int x0 = width / 2 - boxWidth / 2;
         // just under the crosshair, or centred if the window is too short for that
         int y0 = Math.min(height / 2 + 14, height - boxHeight - 4);
-        ConsoleCasing casing = minecraft.level.getBlockEntity(pos) instanceof PanelBlockEntity panel
-                ? panel.casing() : ConsoleCasing.DEFAULT;
+        PanelBlockEntity panel = target.console();
+        ConsoleCasing casing = panel != null ? panel.casing() : ConsoleCasing.DEFAULT;
         CasingTheme theme = CasingTheme.of(casing);
         ConsoleGui.plaque(graphics, theme, x0, y0, boxWidth, boxHeight);
         AnalogDial.draw(graphics, element, casing, value, x0 + PAD, y0 + PAD, DIAL_SCALE);

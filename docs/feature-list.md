@@ -32,6 +32,14 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 | Labels shrink to fit their buttons; French translation shipped | GH #4 | Added on `main` after the merge. The French file predates 0.2.7: 36 lines (33 new since then, 3 that described the old blueprint) were translated by Claude and await the contributor's review. Two palette names are still cut short at the smallest size ("Bnd de tubes Nixie", "Panneau d'affichage"). Not seen in-game. |
 | Add-on API, version 1 | Author | Components with cost, options and renderer; reading and working consoles. See `docs/api.md`. |
 
+## Built after 0.2.8, awaiting the in-game check
+
+| Feature | Source | Notes |
+|---|---|---|
+| Consoles work on Create contraptions (elevators, trains and the rest) | The author, 2026-11-26 | On `main` since 2026-11-27 (built on branch `contraption-consoles`, as are the two rows below). Parts stay on their frequencies and can be clicked while assembled. The author tried clicks on an elevator on 2026-11-26: they work, and editing is rightly off. Readouts lost their Display Link text on assembly; fixed the same day, not yet seen. |
+| Contraption consoles: part highlight, hold-and-drag and sneak-scroll | Follow-up to the contraption work | Stage 3, built 2026-11-26 on the same branch. Aiming follows the console where it is drawn, between ticks. Nothing of it has been seen in-game. |
+| Contraption Controls as console parts: Actor Switch (with a frequency that holds the actors stopped), Floor Button, Floor Readout | The author, 2026-11-26 | Same branch. Researched from Create's source, proposed by Claude, approved by the author with the frequency added ("if it causes problems we can take it out"). The author tried them on 2026-11-27: the floor parts' function is "great" and so are the two palette pages. Reworked the same day at their request: the Actor Switch looks like Create's top plate (square button, red arrows) and takes its actor as an item in a designer slot; floor numbers are drawn like Create's, light or dark; Label is back on the first page. The rework has not been seen in-game. On 2026-11-27 the author said the rework looks and works great, and asked for one more thing, built the same day and not yet seen: with no actor selected, on an elevator, the Actor Switch is Create's floor selector (scrollable floor name, white for the current floor, orange for the others, press to go). |
+
 ## Planned for the main mod
 
 | Feature | Source | Notes |
@@ -78,6 +86,8 @@ Branch `blueprint-designer`. Unit tests and game tests pass on both versions; no
 
 ## Still to verify
 
+- Consoles on contraptions in-game: the part highlight, hold-and-drag and sneak-scroll while moving, readouts keeping their text, trains and other contraption types
+- The Actor Switch, Floor Button and Floor Readout in-game: their look, the designer's Actors and Floor steppers, the palette's second page, a switch against real drills and doors (and train doors across carriages), a Redstone Link holding the actors off, an elevator with several named floors
 - 0.2.6 CC changes and the designer reskin on 1.20.1; reskin themes other than brass
 - Weathered Iron casing in-game; the seam-line fix on joined consoles
 - Cabled consoles on a moving vehicle, including assembling one

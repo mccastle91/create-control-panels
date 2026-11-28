@@ -49,6 +49,9 @@ Wrench: sneak-use cycles the angle presets; on a wall it runs 15/30/45° with th
 | nixie | 6×4 | in, two nixie digits 0–15 | — |
 | nixie_strip | 5.5–13 × 4 (2–5 tubes, default 4) | Display Link, one line | — |
 | display_board | 12–14 × 6 (default 12, centred) | Display Link, two rows, each its own line or off | — |
+| actor_switch | 6×4 (Create's top plate at half size) | in: a signal holds the actors stopped | click presses the button: on lets the actors of the contraption it rides run (one kind by the filter item in its third slot, or all); the arrows light red while they are stopped. With no filter on an elevator it is a floor selector: scroll picks a floor (name white if it is the called floor, orange if not), click sends the cabin there. Only holds its state on a placed console |
+| floor_button | 3×3 | — | click calls an elevator floor (1 = lowest); glows while that floor is the cabin's target |
+| floor_readout | 8.5×4 | — | — (three tubes: the short name of the floor the cabin is at) |
 | label | text-sized | — | — (passes clicks through) |
 
 Costs (lines name an item or an item tag; an item that doesn't resolve makes that line free):
@@ -63,6 +66,9 @@ Costs (lines name an item or an item tag; an item that doesn't resolve makes tha
 | knob, slider_h, slider_v, analog_lever | Create analog lever |
 | lamp | redstone lamp |
 | large_lamp | 2 redstone lamps |
+| actor_switch | Create Contraption Controls |
+| floor_button | any wooden button + glowstone dust |
+| floor_readout | 2 Create nixie tubes |
 | needle_meter, bar_meter, bar_meter_v | Create speedometer |
 | nixie | Create nixie tube |
 | nixie_strip | 2 Create nixie tubes |
